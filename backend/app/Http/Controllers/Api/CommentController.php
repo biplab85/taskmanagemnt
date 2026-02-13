@@ -32,12 +32,20 @@ class CommentController extends Controller
 
         $comment->load('user:id,name,email,avatar');
 
-        // Create notification for task assignee
-        if ($task->assigned_to && $task->assigned_to !== auth()->id()) {
+        // Notify ALL involved users (assignee + creator) INCLUDING self
+        $currentUserId = auth()->id();
+        $currentUserName = auth()->user()->name;
+        $notifyUsers = collect([$task->assigned_to, $task->created_by])
+            ->filter()
+            ->unique();
+
+        foreach ($notifyUsers as $uid) {
+            $isSelf = $uid === $currentUserId;
             Notification::create([
-                'user_id' => $task->assigned_to,
+                'user_id' => $uid,
+                'task_id' => $task->id,
                 'title' => 'New Comment',
-                'message' => auth()->user()->name . ' commented on "' . $task->title . '"',
+                'message' => ($isSelf ? 'You' : $currentUserName) . ' commented on "' . $task->title . '"',
                 'type' => 'comment',
             ]);
         }

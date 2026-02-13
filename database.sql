@@ -102,6 +102,7 @@ CREATE TABLE IF NOT EXISTS `attachments` (
 CREATE TABLE IF NOT EXISTS `notifications` (
   `id` BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   `user_id` BIGINT UNSIGNED NOT NULL,
+  `task_id` BIGINT UNSIGNED DEFAULT NULL,
   `title` VARCHAR(255) NOT NULL,
   `message` TEXT NOT NULL,
   `type` VARCHAR(50) DEFAULT 'info',
@@ -109,8 +110,10 @@ CREATE TABLE IF NOT EXISTS `notifications` (
   `created_at` TIMESTAMP NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   KEY `notifications_user_id_foreign` (`user_id`),
+  KEY `notifications_task_id_foreign` (`task_id`),
   KEY `notifications_is_read_index` (`is_read`),
-  CONSTRAINT `notifications_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+  CONSTRAINT `notifications_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `notifications_task_id_foreign` FOREIGN KEY (`task_id`) REFERENCES `tasks` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- --------------------------------------------------------

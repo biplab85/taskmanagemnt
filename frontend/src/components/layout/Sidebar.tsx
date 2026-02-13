@@ -1,10 +1,13 @@
+import { useState, useEffect } from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Columns3, Users, UserCircle, Settings } from 'lucide-react';
+import { LayoutDashboard, Columns3, Users, UserCircle, Settings, Inbox } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
+import api from '@/api/axios';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/inbox', label: 'Inbox', icon: Inbox, showBadge: true },
   { to: '/kanban', label: 'Kanban Board', icon: Columns3 },
   { to: '/profile', label: 'Profile', icon: UserCircle },
   { to: '/settings', label: 'Settings', icon: Settings },
@@ -17,6 +20,18 @@ const adminItems = [
 export function Sidebar() {
   const { isAdmin } = useAuth();
   const { settings } = useSettings();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    const fetchCount = () => {
+      api.get<{ count: number }>('/notifications/unread-count')
+        .then((res) => setUnreadCount(res.data.count))
+        .catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000);
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <aside className="sidebar-wrapper fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-sidebar-bg text-sidebar-foreground">
@@ -47,7 +62,15 @@ export function Sidebar() {
             }
           >
             <item.icon className="h-[18px] w-[18px]" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.showBadge && unreadCount > 0 && (
+              <span className="flex items-center gap-1.5">
+                <span className="h-2 w-2 rounded-full bg-red-500 animate-blink" />
+                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              </span>
+            )}
           </NavLink>
         ))}
 

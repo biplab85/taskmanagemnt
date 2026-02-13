@@ -8,11 +8,23 @@ use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $notifications = Notification::where('user_id', auth()->id())
-            ->orderBy('created_at', 'desc')
-            ->limit(50)
+        $query = Notification::with('task:id,title,status')
+            ->where('user_id', auth()->id());
+
+        if ($request->has('filter') && $request->filter === 'unread') {
+            $query->where('is_read', false);
+        } elseif ($request->has('filter') && $request->filter === 'read') {
+            $query->where('is_read', true);
+        }
+
+        if ($request->has('type') && $request->type) {
+            $query->where('type', $request->type);
+        }
+
+        $notifications = $query->orderBy('created_at', 'desc')
+            ->limit(100)
             ->get();
 
         return response()->json($notifications);
@@ -35,6 +47,14 @@ class NotificationController extends Controller
         return response()->json($notification);
     }
 
+    public function markAsUnread($id)
+    {
+        $notification = Notification::where('user_id', auth()->id())->findOrFail($id);
+        $notification->update(['is_read' => false]);
+
+        return response()->json($notification);
+    }
+
     public function markAllAsRead()
     {
         Notification::where('user_id', auth()->id())
@@ -42,5 +62,22 @@ class NotificationController extends Controller
             ->update(['is_read' => true]);
 
         return response()->json(['message' => 'All notifications marked as read']);
+    }
+
+    public function destroy($id)
+    {
+        $notification = Notification::where('user_id', auth()->id())->findOrFail($id);
+        $notification->delete();
+
+        return response()->json(['message' => 'Notification deleted']);
+    }
+
+    public function destroyAll()
+    {
+        Notification::where('user_id', auth()->id())
+            ->where('is_read', true)
+            ->delete();
+
+        return response()->json(['message' => 'All read notifications cleared']);
     }
 }

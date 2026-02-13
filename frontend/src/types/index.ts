@@ -60,11 +60,13 @@ export interface Attachment {
 export interface Notification {
   id: number;
   user_id: number;
+  task_id: number | null;
   title: string;
   message: string;
   type: string;
   is_read: boolean;
   created_at: string;
+  task?: { id: number; title: string; status: string } | null;
 }
 
 export interface ActivityLog {

@@ -44,8 +44,18 @@ Route::middleware('auth:api')->group(function () {
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/notifications/clear-read', [NotificationController::class, 'destroyAll']);
+    Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
+    Route::put('/notifications/{id}/unread', [NotificationController::class, 'markAsUnread']);
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
+
+    // Users list (all authenticated users can fetch basic user info)
+    Route::get('/users-list', function () {
+        return response()->json(
+            \App\Models\User::select('id', 'name', 'email', 'avatar', 'status')->orderBy('name')->get()
+        );
+    });
 
     // Activity Logs
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);

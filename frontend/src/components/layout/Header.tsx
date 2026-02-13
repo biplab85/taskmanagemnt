@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { LogOut, Moon, Sun, Bell, UserCircle, Settings, Laptop, Coffee, Phone, Palmtree, WifiOff } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import api from '@/api/axios';
@@ -33,16 +33,34 @@ export function Header() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
+  // Poll unread count every 15s
   useEffect(() => {
-    api.get<{ count: number }>('/notifications/unread-count').then((res) => {
-      setUnreadCount(res.data.count);
-    }).catch(() => {});
+    const fetchCount = () => {
+      api.get<{ count: number }>('/notifications/unread-count')
+        .then((res) => setUnreadCount(res.data.count))
+        .catch(() => {});
+    };
+    fetchCount();
+    const interval = setInterval(fetchCount, 15000);
+    return () => clearInterval(interval);
   }, []);
 
   const fetchNotifications = async () => {
     try {
-      const res = await api.get<Notification[]>('/notifications');
-      setNotifications(res.data);
+      const [notifRes, countRes] = await Promise.all([
+        api.get<Notification[]>('/notifications'),
+        api.get<{ count: number }>('/notifications/unread-count'),
+      ]);
+      setNotifications(notifRes.data);
+      setUnreadCount(countRes.data.count);
+    } catch { /* ignore */ }
+  };
+
+  const markAsRead = async (id: number) => {
+    try {
+      await api.put(`/notifications/${id}/read`);
+      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
+      setUnreadCount((c) => Math.max(0, c - 1));
     } catch { /* ignore */ }
   };
 
@@ -52,6 +70,15 @@ export function Header() {
       setUnreadCount(0);
       setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
     } catch { /* ignore */ }
+  };
+
+  const handleNotificationClick = async (n: Notification) => {
+    if (!n.is_read) {
+      await markAsRead(n.id);
+    }
+    if (n.task_id) {
+      navigate(`/kanban`);
+    }
   };
 
   const initials = user?.name
@@ -123,7 +150,7 @@ export function Header() {
             <Button variant="ghost" size="icon" className="relative h-9 w-9 rounded-xl text-muted-foreground hover:text-foreground cursor-pointer">
               <Bell className="h-[18px] w-[18px]" />
               {unreadCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white animate-scale-in">
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white animate-blink">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
@@ -144,18 +171,33 @@ export function Header() {
                 <div className="px-3 py-6 text-center text-sm text-muted-foreground">No notifications</div>
               ) : (
                 notifications.slice(0, 10).map((n) => (
-                  <div
+                  <button
                     key={n.id}
-                    className={`px-3 py-2.5 transition-colors ${!n.is_read ? 'bg-brand-50/50 dark:bg-brand-950/20' : ''}`}
+                    onClick={() => handleNotificationClick(n)}
+                    className={`w-full text-left px-3 py-2.5 transition-colors hover:bg-muted/50 ${!n.is_read ? 'bg-brand-50/50 dark:bg-brand-950/20' : ''}`}
                   >
-                    <p className="text-sm font-medium">{n.title}</p>
-                    <p className="text-xs text-muted-foreground">{n.message}</p>
+                    <div className="flex items-center gap-2">
+                      <p className={`text-sm ${!n.is_read ? 'font-semibold' : 'font-medium'}`}>{n.title}</p>
+                      {!n.is_read && (
+                        <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-brand-600 animate-blink" />
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground line-clamp-1">{n.message}</p>
                     <p className="mt-1 text-[10px] text-muted-foreground/60">
                       {new Date(n.created_at).toLocaleString()}
                     </p>
-                  </div>
+                  </button>
                 ))
               )}
+            </div>
+            <DropdownMenuSeparator />
+            <div className="px-3 py-2">
+              <Link
+                to="/inbox"
+                className="block text-center text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
+              >
+                View all notifications
+              </Link>
             </div>
           </DropdownMenuContent>
         </DropdownMenu>

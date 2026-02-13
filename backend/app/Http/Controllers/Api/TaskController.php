@@ -89,12 +89,25 @@ class TaskController extends Controller
             'description' => 'Created task "' . $task->title . '"',
         ]);
 
-        // Notify assignee
-        if ($task->assigned_to && $task->assigned_to !== auth()->id()) {
+        $currentUserId = auth()->id();
+        $currentUserName = auth()->user()->name;
+
+        // Notify creator (self) about task creation
+        Notification::create([
+            'user_id' => $currentUserId,
+            'task_id' => $task->id,
+            'title' => 'Task Created',
+            'message' => 'You created "' . $task->title . '"',
+            'type' => 'task_created',
+        ]);
+
+        // Notify assignee (if different from creator)
+        if ($task->assigned_to && $task->assigned_to !== $currentUserId) {
             Notification::create([
                 'user_id' => $task->assigned_to,
+                'task_id' => $task->id,
                 'title' => 'Task Assigned',
-                'message' => auth()->user()->name . ' assigned you to "' . $task->title . '"',
+                'message' => $currentUserName . ' assigned you to "' . $task->title . '"',
                 'type' => 'task_assigned',
             ]);
         }
@@ -141,29 +154,65 @@ class TaskController extends Controller
 
         $task->load(['assignee:id,name,email,avatar,status', 'creator:id,name,email,avatar']);
 
-        // Activity log
+        $currentUserId = auth()->id();
+        $currentUserName = auth()->user()->name;
+
+        // Activity log + notifications
         if ($oldStatus !== $task->status) {
             ActivityLog::create([
-                'user_id' => auth()->id(),
+                'user_id' => $currentUserId,
                 'task_id' => $task->id,
                 'action' => 'status_changed',
                 'description' => 'Changed status from "' . $oldStatus . '" to "' . $task->status . '"',
             ]);
+
+            // Notify ALL involved users (assignee + creator) INCLUDING self
+            $notifyUsers = collect([$task->assigned_to, $task->created_by])
+                ->filter()
+                ->unique();
+
+            foreach ($notifyUsers as $uid) {
+                $isSelf = $uid === $currentUserId;
+                Notification::create([
+                    'user_id' => $uid,
+                    'task_id' => $task->id,
+                    'title' => 'Status Changed',
+                    'message' => ($isSelf ? 'You' : $currentUserName) . ' changed "' . $task->title . '" from ' . $oldStatus . ' to ' . $task->status,
+                    'type' => 'task_status_changed',
+                ]);
+            }
         } else {
             ActivityLog::create([
-                'user_id' => auth()->id(),
+                'user_id' => $currentUserId,
                 'task_id' => $task->id,
                 'action' => 'updated',
                 'description' => 'Updated task "' . $task->title . '"',
             ]);
+
+            // Notify ALL involved users INCLUDING self
+            $notifyUsers = collect([$task->assigned_to, $task->created_by])
+                ->filter()
+                ->unique();
+
+            foreach ($notifyUsers as $uid) {
+                $isSelf = $uid === $currentUserId;
+                Notification::create([
+                    'user_id' => $uid,
+                    'task_id' => $task->id,
+                    'title' => 'Task Updated',
+                    'message' => ($isSelf ? 'You' : $currentUserName) . ' updated "' . $task->title . '"',
+                    'type' => 'task_updated',
+                ]);
+            }
         }
 
-        // Notify new assignee
-        if ($task->assigned_to && $task->assigned_to !== $oldAssignee && $task->assigned_to !== auth()->id()) {
+        // Notify new assignee (if changed and not self)
+        if ($task->assigned_to && $task->assigned_to !== $oldAssignee && $task->assigned_to !== $currentUserId) {
             Notification::create([
                 'user_id' => $task->assigned_to,
+                'task_id' => $task->id,
                 'title' => 'Task Assigned',
-                'message' => auth()->user()->name . ' assigned you to "' . $task->title . '"',
+                'message' => $currentUserName . ' assigned you to "' . $task->title . '"',
                 'type' => 'task_assigned',
             ]);
         }
