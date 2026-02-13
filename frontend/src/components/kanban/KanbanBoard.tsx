@@ -23,6 +23,11 @@ import { KanbanColumn } from './KanbanColumn';
 import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import { TaskDrawer } from './TaskDrawer';
+import { ListView } from './ListView';
+import { GridView } from './GridView';
+import { TableView } from './TableView';
+import { CalendarView } from './CalendarView';
+import { ViewSwitcher, type ViewMode } from './ViewSwitcher';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -45,6 +50,11 @@ export function KanbanBoard() {
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [assigneeFilter, setAssigneeFilter] = useState('all');
 
+  // View mode with localStorage persistence
+  const [viewMode, setViewMode] = useState<ViewMode>(() => {
+    return (localStorage.getItem('kanban-view-mode') as ViewMode) || 'board';
+  });
+
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTaskId, setDrawerTaskId] = useState<number | null>(null);
@@ -52,6 +62,11 @@ export function KanbanBoard() {
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    setViewMode(mode);
+    localStorage.setItem('kanban-view-mode', mode);
+  };
 
   const fetchTasks = useCallback(async () => {
     try {
@@ -77,6 +92,7 @@ export function KanbanBoard() {
   const getTasksByStatus = (status: TaskStatus) =>
     tasks.filter((t) => t.status === status).sort((a, b) => a.position - b.position);
 
+  // DnD collision detection (board view only)
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args);
     const intersections = rectIntersection(args);
@@ -222,6 +238,15 @@ export function KanbanBoard() {
     );
   }
 
+  // View descriptions for the page subtitle
+  const viewDescriptions: Record<ViewMode, string> = {
+    board: 'Drag and drop tasks between columns to update their status',
+    list: 'Tasks organized by status in a compact list',
+    grid: 'Tasks displayed as cards in a responsive grid',
+    table: 'All task details in a sortable data table',
+    calendar: 'Tasks plotted on a calendar by due date',
+  };
+
   return (
     <>
       {/* Filters bar */}
@@ -266,32 +291,81 @@ export function KanbanBoard() {
         </Button>
       </div>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={collisionDetection}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-4 overflow-x-auto pb-4">
-          {TASK_STATUSES.map((status) => (
-            <KanbanColumn
-              key={status.value}
-              status={status.value}
-              label={status.label}
-              color={status.color}
-              tasks={getTasksByStatus(status.value)}
-              onEditTask={handleEditTask}
-              onDeleteTask={handleDeleteTask}
-              onViewTask={handleViewTask}
-            />
-          ))}
-        </div>
+      {/* View switcher */}
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-xs text-muted-foreground hidden sm:block">
+          {viewDescriptions[viewMode]}
+        </p>
+        <ViewSwitcher value={viewMode} onChange={handleViewModeChange} />
+      </div>
 
-        <DragOverlay dropAnimation={null}>
-          {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
-        </DragOverlay>
-      </DndContext>
+      {/* View content */}
+      <div key={viewMode}>
+        {viewMode === 'board' && (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={collisionDetection}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="flex gap-4 overflow-x-auto pb-4">
+              {TASK_STATUSES.map((status) => (
+                <KanbanColumn
+                  key={status.value}
+                  status={status.value}
+                  label={status.label}
+                  color={status.color}
+                  tasks={getTasksByStatus(status.value)}
+                  onEditTask={handleEditTask}
+                  onDeleteTask={handleDeleteTask}
+                  onViewTask={handleViewTask}
+                />
+              ))}
+            </div>
+
+            <DragOverlay dropAnimation={null}>
+              {activeTask ? <TaskCard task={activeTask} isOverlay /> : null}
+            </DragOverlay>
+          </DndContext>
+        )}
+
+        {viewMode === 'list' && (
+          <ListView
+            tasks={tasks}
+            onView={handleViewTask}
+            onEdit={handleEditTask}
+            onDelete={handleDeleteTask}
+          />
+        )}
+
+        {viewMode === 'grid' && (
+          <GridView
+            tasks={tasks}
+            onView={handleViewTask}
+            onEdit={handleEditTask}
+            onDelete={handleDeleteTask}
+          />
+        )}
+
+        {viewMode === 'table' && (
+          <TableView
+            tasks={tasks}
+            onView={handleViewTask}
+            onEdit={handleEditTask}
+            onDelete={handleDeleteTask}
+          />
+        )}
+
+        {viewMode === 'calendar' && (
+          <CalendarView
+            tasks={tasks}
+            onView={handleViewTask}
+            onEdit={handleEditTask}
+            onDelete={handleDeleteTask}
+          />
+        )}
+      </div>
 
       <TaskModal
         open={modalOpen}
