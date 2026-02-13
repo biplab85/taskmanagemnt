@@ -25,11 +25,13 @@ class TaskController extends Controller
         }
 
         if ($request->has('status') && $request->status) {
-            $query->where('status', $request->status);
+            $statuses = explode(',', $request->status);
+            $query->whereIn('status', $statuses);
         }
 
         if ($request->has('priority') && $request->priority) {
-            $query->where('priority', $request->priority);
+            $priorities = explode(',', $request->priority);
+            $query->whereIn('priority', $priorities);
         }
 
         if ($request->has('assigned_to') && $request->assigned_to) {
@@ -42,6 +44,14 @@ class TaskController extends Controller
                 $q->where('title', 'like', "%{$search}%")
                   ->orWhere('description', 'like', "%{$search}%");
             });
+        }
+
+        if ($request->has('date_from') && $request->date_from) {
+            $query->where('created_at', '>=', $request->date_from);
+        }
+
+        if ($request->has('date_to') && $request->date_to) {
+            $query->where('created_at', '<=', $request->date_to . ' 23:59:59');
         }
 
         $tasks = $query->orderBy('position')->orderBy('created_at', 'desc')->get();
