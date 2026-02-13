@@ -5,9 +5,11 @@ import type { User } from '@/types';
 import { Button } from '@/components/ui/button';
 import { UserTable } from '@/components/users/UserTable';
 import { UserFormDialog } from '@/components/users/UserFormDialog';
+import { useAuth } from '@/context/AuthContext';
 import { toast } from 'sonner';
 
 export function UsersPage() {
+  const { user: currentUser } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -22,6 +24,17 @@ export function UsersPage() {
   }, []);
 
   useEffect(() => { fetchUsers(); }, [fetchUsers]);
+
+  // Keep current user's status in sync with the table
+  useEffect(() => {
+    if (currentUser) {
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.id === currentUser.id ? { ...u, status: currentUser.status } : u
+        )
+      );
+    }
+  }, [currentUser?.id, currentUser?.status]);
 
   const handleCreate = () => { setEditingUser(null); setDialogOpen(true); };
   const handleEdit = (user: User) => { setEditingUser(user); setDialogOpen(true); };

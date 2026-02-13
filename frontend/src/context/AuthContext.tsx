@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
+  loginAs: (userId: number) => Promise<void>;
   register: (name: string, email: string, password: string, passwordConfirmation: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserStatus: (status: UserStatus) => Promise<void>;
@@ -48,6 +49,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setToken(access_token);
     setUser(userData);
     toast.success(`Welcome back, ${userData.name}!`);
+  };
+
+  const loginAs = async (userId: number) => {
+    const response = await api.post<AuthResponse>(`/users/${userId}/impersonate`);
+    const { access_token, user: userData } = response.data;
+    localStorage.setItem('token', access_token);
+    localStorage.setItem('user', JSON.stringify(userData));
+    setToken(access_token);
+    setUser(userData);
   };
 
   const register = async (name: string, email: string, password: string, passwordConfirmation: string) => {
@@ -98,7 +108,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isAdmin = user?.role === 'admin';
 
   return (
-    <AuthContext.Provider value={{ user, token, login, register, logout, updateUserStatus, refreshUser, loading, isAdmin }}>
+    <AuthContext.Provider value={{ user, token, login, loginAs, register, logout, updateUserStatus, refreshUser, loading, isAdmin }}>
       {children}
     </AuthContext.Provider>
   );

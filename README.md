@@ -6,6 +6,7 @@ A premium, modern task management system inspired by Asana and Trello. Built wit
 
 ### Core
 - **Kanban Board** with full drag & drop (5 columns: Backlog, To Do, In Progress, Review, Complete)
+- **Multiple View Modes** — Board, List, Grid, Table, Calendar
 - **Task CRUD** with rich text editor (Tiptap) for descriptions
 - **File Attachments** with image preview, multi-file upload, file type validation
 - **Comments** on tasks with real-time updates
@@ -16,16 +17,20 @@ A premium, modern task management system inspired by Asana and Trello. Built wit
 - **Smooth animations** and transitions throughout
 - **Responsive design** with premium spacing and typography
 - **Custom scrollbars** and backdrop blur effects
+- **Dynamic Login Page** — uses project settings for logo & name
 
 ### User Management
 - **JWT Authentication** (login, register, logout, token refresh)
-- **Role-based access** (Admin can manage all users/tasks, Users see only their own)
-- **User Profile page** with avatar upload, personal info editing
+- **Role-based access** — Sidebar, routes, and API access adapt to current role
+- **Admin Impersonation** — "Login As" any user from the Users table with confirmation dialog
+- **User Profile page** with avatar upload, banner editor, personal info editing
+- **Instant Status Apply** — Checkmark button on profile page for one-click status save
+- **Real-time Status Sync** — Status updates propagate instantly to header, profile, and users table
 - **User Status** indicators (Working, Busy, In Meeting, Vacation, Offline)
-- **Admin User Management** panel with full CRUD
+- **Admin User Management** panel with dropdown action menus (Edit, Delete, Login As)
 
 ### Additional
-- **Notifications** system with unread count and mark-all-read
+- **Inbox** — Full notification system with unread count, mark read/unread, clear all
 - **Activity Logs** tracking task creation, updates, and status changes
 - **Search & Filters** on Kanban board (text search, priority filter, assignee filter)
 - **Figma Link** support in task attachments
@@ -150,7 +155,10 @@ npm run dev
 | GET | /api/notifications | Yes | List notifications |
 | GET | /api/notifications/unread-count | Yes | Get unread count |
 | PUT | /api/notifications/:id/read | Yes | Mark as read |
+| PUT | /api/notifications/:id/unread | Yes | Mark as unread |
 | PUT | /api/notifications/read-all | Yes | Mark all as read |
+| DELETE | /api/notifications/clear-read | Yes | Clear read notifications |
+| DELETE | /api/notifications/:id | Yes | Delete notification |
 
 ### Users (Admin Only)
 | Method | Endpoint | Auth | Description |
@@ -160,6 +168,7 @@ npm run dev
 | GET | /api/users/:id | Admin | Get user |
 | PUT | /api/users/:id | Admin | Update user |
 | DELETE | /api/users/:id | Admin | Delete user |
+| POST | /api/users/:id/impersonate | Admin | Login as user (JWT) |
 
 ## Project Structure
 

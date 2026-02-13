@@ -8,10 +8,12 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { PasswordInput } from '@/components/shared/PasswordInput';
 import { Moon, Sun } from 'lucide-react';
+import { useSettings } from '@/context/SettingsContext';
 
 export function LoginPage() {
   const { login, user, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { settings } = useSettings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -42,12 +44,16 @@ export function LoginPage() {
       </button>
       <Card className="w-full max-w-md border-0 shadow-2xl animate-scale-in">
         <CardHeader className="space-y-4 text-center pb-2">
-          <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 font-bold text-white text-xl shadow-xl shadow-brand-500/30">
-            S
+          <div className="mx-auto flex font-bold">
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt={settings.projectName} className="h-full w-full object-contain p-0.5" />
+            ) : (
+              settings.logoText || 'S'
+            )}
           </div>
           <div>
             <h1 className="text-2xl font-bold">Welcome back</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Sign in to your SKLENTR account</p>
+            <p className="mt-1 text-sm text-muted-foreground">Sign in to your {settings.projectName} account</p>
           </div>
         </CardHeader>
         <CardContent>

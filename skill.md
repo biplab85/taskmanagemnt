@@ -8,17 +8,21 @@
 
 - User Registration, Login, Logout (JWT Authentication)
 - User Management (Create, Edit, Update, Delete users — Admin only)
-- Role-based Access Control (Admin, User)
+- Role-based Access Control (Admin, User) with strict sidebar visibility
+- Admin Impersonation — "Login As" any user from the Users table
 - Task Creation, Update, Delete with Rich Text Descriptions (Tiptap)
 - Drag & Drop Kanban Board (Backlog, To Do, In Progress, Review, Complete)
+- Multiple View Modes (Board, List, Grid, Table, Calendar)
 - Task Assignment to Users
 - Search & Filter on Kanban Board (text search, priority filter, assignee filter)
-- Notifications System with Unread Count
+- Inbox Notification System with real-time unread count
 - Activity Logs Tracking All Changes
 - Multi-file Attachment Support with Image Preview
-- User Profile Page with Avatar Upload & Status Indicators
+- User Profile Page with Avatar Upload, Status Indicators & Instant Status Apply
+- Real-time Status Synchronization across Header, Profile, Users Table
 - Dark Mode / Light Mode Toggle with Persistence
 - Dashboard with Stats, Progress Ring & Activity Feed
+- Dynamic Login Page (uses project settings for logo & name)
 
 ---
 
@@ -29,6 +33,7 @@
 - Create, edit, delete any task
 - Assign tasks to any user
 - Manage users (full CRUD)
+- Impersonate any user ("Login As" — generates new JWT, switches session)
 - Control permissions
 - Access Admin Panel (User Management)
 
@@ -39,6 +44,12 @@
 - Comment on tasks
 - Upload attachments
 - Manage own profile & avatar
+
+#### Impersonation Rules
+- Admin-only feature, protected by `admin` middleware on both frontend and backend
+- Self-impersonation is blocked (422 error)
+- Sidebar, routes, and API access switch to the impersonated user's role
+- Browser back-button is handled via `replace` navigation
 
 ---
 
@@ -85,15 +96,20 @@
 - **Custom Scrollbars** — Styled thin scrollbars matching the theme
 - **Backdrop Blur Effects** — Glass-morphism on overlays and headers
 - **User Status Indicators** — Colored dots (Working, Busy, In Meeting, Vacation, Offline)
+- **Instant Status Apply** — Checkmark badge + Apply button on profile status card, saves immediately
+- **Status Sync** — Status changes propagate in real-time to Header, Profile, Users Table
+- **Dropdown Action Menus** — Three-dot menus on user table rows (Edit, Delete, Login As)
+- **Confirmation Dialogs** — Impersonation confirmation before session switch
 - **Premium Card Design** — Rounded corners, shadows, hover effects
 
 #### Pages
-- Login / Register (with theme toggle and animated cards)
+- Login / Register (with theme toggle, animated cards, dynamic logo from settings)
 - Dashboard (stats, progress ring, activity feed)
-- Kanban Board (drag & drop with search/filters)
+- Inbox (full notification management with mark read/unread, clear)
+- Kanban Board (drag & drop with search/filters, multiple view modes)
 - Task Modal (3 tabs: Details, Files, Comments)
-- Profile Page (avatar upload, status selector, personal info)
-- User Management (Admin only — table with CRUD actions)
+- Profile Page (avatar upload, instant status apply with checkmark, banner editor, personal info)
+- User Management (Admin only — table with dropdown actions, impersonation)
 
 ---
 
@@ -188,13 +204,14 @@ Activity_Logs  (id, user_id, task_id, action, description, created_at)
 | GET    | /api/tasks/:id/activity     | Yes   | Task activity logs    |
 
 #### Users (Admin Only)
-| Method | Endpoint                    | Auth  | Description           |
-|--------|-----------------------------|-------|-----------------------|
-| GET    | /api/users                  | Admin | List users            |
-| POST   | /api/users                  | Admin | Create user           |
-| GET    | /api/users/:id              | Admin | Get user              |
-| PUT    | /api/users/:id              | Admin | Update user           |
-| DELETE | /api/users/:id              | Admin | Delete user           |
+| Method | Endpoint                         | Auth  | Description           |
+|--------|----------------------------------|-------|-----------------------|
+| GET    | /api/users                       | Admin | List users            |
+| POST   | /api/users                       | Admin | Create user           |
+| GET    | /api/users/:id                   | Admin | Get user              |
+| PUT    | /api/users/:id                   | Admin | Update user           |
+| DELETE | /api/users/:id                   | Admin | Delete user           |
+| POST   | /api/users/:id/impersonate       | Admin | Login as user (JWT)   |
 
 ---
 
@@ -230,12 +247,21 @@ Activity_Logs  (id, user_id, task_id, action, description, created_at)
 - Premium UI with Animations
 - Database Seeder with Dummy Data
 
-#### Phase 3 - Advanced (Planned)
+#### Phase 3 - Advanced Features (Completed)
+- Multiple View Modes (Board, List, Grid, Table, Calendar)
+- Full Inbox Notification System with self-notifications
+- Admin Impersonation ("Login As" user with JWT session switch)
+- Instant Status Apply on Profile with checkmark UI
+- Real-time Status Sync across all views (Header, Profile, Users Table)
+- Role-based Sidebar Visibility (auto-hides admin items after impersonation)
+- Dropdown Action Menus on User Table (Edit, Delete, Login As)
+- Dynamic Login Page with project settings integration
+- User status bug fix (status column now included in user queries)
+
+#### Phase 4 - Future (Planned)
 - Chat / Messaging
 - Reports & Analytics
 - Teams & Workspaces
-- Calendar View
-- List View
 
 ---
 

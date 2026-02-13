@@ -73,6 +73,18 @@ class AuthController extends Controller
         return $this->respondWithToken($token, auth()->user());
     }
 
+    public function impersonate($id)
+    {
+        if ((int) $id === auth()->id()) {
+            return response()->json(['message' => 'Cannot impersonate yourself'], 422);
+        }
+
+        $targetUser = User::findOrFail($id);
+        $token = auth()->login($targetUser);
+
+        return $this->respondWithToken($token, $targetUser);
+    }
+
     protected function respondWithToken($token, $user, $status = 200)
     {
         return response()->json([
