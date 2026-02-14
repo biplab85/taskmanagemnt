@@ -22,6 +22,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { FileUpload } from '@/components/shared/FileUpload';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
+import { MultiUserSelect } from '@/components/shared/MultiUserSelect';
 import { Trash2, Download, FileImage, FileText, File, ExternalLink, Send } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -50,7 +51,7 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('backlog');
   const [priority, setPriority] = useState('medium');
-  const [assignedTo, setAssignedTo] = useState('');
+  const [assigneeIds, setAssigneeIds] = useState<number[]>([]);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -67,7 +68,7 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
       setDescription(task.description || '');
       setStatus(task.status);
       setPriority(task.priority);
-      setAssignedTo(task.assigned_to?.toString() || '');
+      setAssigneeIds(task.assignees?.map((u) => u.id) || []);
       setStartDate(task.start_date || '');
       setEndDate(task.end_date || '');
       api.get<Task>(`/tasks/${task.id}`).then((res) => {
@@ -79,7 +80,7 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
       setDescription('');
       setStatus('backlog');
       setPriority('medium');
-      setAssignedTo('');
+      setAssigneeIds([]);
       setStartDate('');
       setEndDate('');
       setAttachments([]);
@@ -98,7 +99,7 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
       description: description || null,
       status,
       priority,
-      assigned_to: assignedTo ? Number(assignedTo) : null,
+      assignees: assigneeIds,
       start_date: startDate || null,
       end_date: endDate || null,
     };
@@ -227,15 +228,12 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
               </div>
 
               <div className="space-y-2">
-                <Label>Assign To</Label>
-                <Select value={assignedTo} onValueChange={setAssignedTo}>
-                  <SelectTrigger><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                  <SelectContent>
-                    {users.map((u) => (
-                      <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label>Assignees</Label>
+                <MultiUserSelect
+                  users={users}
+                  selectedIds={assigneeIds}
+                  onChange={setAssigneeIds}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-4">

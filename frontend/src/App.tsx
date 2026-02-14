@@ -5,7 +5,7 @@ import { SettingsProvider } from '@/context/SettingsContext';
 import { ProtectedRoute, AdminRoute } from '@/components/auth/ProtectedRoute';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { LoginPage } from '@/pages/LoginPage';
-import { RegisterPage } from '@/pages/RegisterPage';
+// Registration removed - only admin can create users
 import { DashboardPage } from '@/pages/DashboardPage';
 import { KanbanPage } from '@/pages/KanbanPage';
 import { InboxPage } from '@/pages/InboxPage';
@@ -22,7 +22,6 @@ function App() {
           <AuthProvider>
             <Routes>
               <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
 
               <Route element={<ProtectedRoute />}>
                 <Route element={<AppLayout />}>

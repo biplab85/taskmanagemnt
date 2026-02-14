@@ -1,10 +1,11 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Pencil, Trash2, Calendar } from 'lucide-react';
+import { GripVertical, Pencil, Trash2, Calendar, Check } from 'lucide-react';
 import type { Task } from '@/types';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
+import { UserHoverCard } from '@/components/shared/UserHoverCard';
 
 interface TaskCardProps {
   task: Task;
@@ -30,12 +31,7 @@ export function TaskCard({ task, isOverlay, onEdit, onDelete, onView }: TaskCard
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const initials = task.assignee?.name
-    ?.split(' ')
-    .map((n) => n[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 2);
+  const assignees = task.assignees || [];
 
   return (
     <div
@@ -79,16 +75,35 @@ export function TaskCard({ task, isOverlay, onEdit, onDelete, onView }: TaskCard
           <div className="flex items-center justify-between pt-1">
             <PriorityBadge priority={task.priority} />
             <div className="flex items-center gap-1.5">
-              {task.assignee && (
-                <div className="relative">
-                  <Avatar className="h-6 w-6 ring-1 ring-border">
-                    {task.assignee.avatar && <AvatarImage src={`/storage/${task.assignee.avatar}`} />}
-                    <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
-                      {initials}
-                    </AvatarFallback>
-                  </Avatar>
-                  {task.assignee.status && (
-                    <UserStatusDot status={task.assignee.status} className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-card" />
+              {assignees.length > 0 && (
+                <div className="flex -space-x-1.5">
+                  {assignees.slice(0, 3).map((u) => {
+                    const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                    return (
+                      <UserHoverCard key={u.id} user={u}>
+                        <div className="relative cursor-pointer">
+                          <Avatar className="h-6 w-6 ring-2 ring-card">
+                            {u.avatar && <AvatarImage src={`/storage/${u.avatar}`} />}
+                            <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          {u.status && (
+                            <UserStatusDot status={u.status} className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-card" />
+                          )}
+                          {u.profile_completed && (
+                            <span className="absolute -top-px -left-px flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 text-white ring-1 ring-card" title="Profile Complete">
+                              <Check className="h-1.5 w-1.5" strokeWidth={3} />
+                            </span>
+                          )}
+                        </div>
+                      </UserHoverCard>
+                    );
+                  })}
+                  {assignees.length > 3 && (
+                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted ring-2 ring-card text-[10px] font-bold text-muted-foreground">
+                      +{assignees.length - 3}
+                    </div>
                   )}
                 </div>
               )}

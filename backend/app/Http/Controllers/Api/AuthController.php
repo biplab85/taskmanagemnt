@@ -56,7 +56,11 @@ class AuthController extends Controller
 
     public function me()
     {
-        return response()->json(auth()->user());
+        $user = auth()->user();
+        $user->load('educations');
+        $user->append('profile_completion');
+
+        return response()->json($user);
     }
 
     public function logout()
@@ -87,6 +91,9 @@ class AuthController extends Controller
 
     protected function respondWithToken($token, $user, $status = 200)
     {
+        $user->load('educations');
+        $user->append('profile_completion');
+
         return response()->json([
             'access_token' => $token,
             'token_type' => 'bearer',

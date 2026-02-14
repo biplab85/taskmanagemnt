@@ -59,8 +59,12 @@ export function TaskDetail({ taskId }: TaskDetailProps) {
           )}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <p className="font-medium text-gray-500">Assignee</p>
-              <p className="mt-1">{task.assignee?.name || 'Unassigned'}</p>
+              <p className="font-medium text-gray-500">Assignees</p>
+              <p className="mt-1">
+                {task.assignees && task.assignees.length > 0
+                  ? task.assignees.map((u) => u.name).join(', ')
+                  : 'Unassigned'}
+              </p>
             </div>
             <div>
               <p className="font-medium text-gray-500">Creator</p>

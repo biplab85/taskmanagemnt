@@ -1,5 +1,16 @@
 export type UserStatus = 'working' | 'busy' | 'in_meeting' | 'vacation' | 'offline';
 
+export interface Education {
+  id: number;
+  user_id: number;
+  level: string;
+  institution: string;
+  passing_year: string | null;
+  result: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface User {
   id: number;
   name: string;
@@ -8,6 +19,29 @@ export interface User {
   can_view_all_tasks: boolean;
   avatar: string | null;
   status: UserStatus;
+  phone?: string | null;
+  phone2?: string | null;
+  department?: string | null;
+  location?: string | null;
+  present_village?: string | null;
+  present_city?: string | null;
+  present_thana?: string | null;
+  present_post_office?: string | null;
+  present_division?: string | null;
+  present_country?: string | null;
+  permanent_village?: string | null;
+  permanent_city?: string | null;
+  permanent_thana?: string | null;
+  permanent_post_office?: string | null;
+  permanent_division?: string | null;
+  permanent_country?: string | null;
+  same_as_permanent?: boolean;
+  password_changed?: boolean;
+  cv_path?: string | null;
+  skills?: string[] | null;
+  profile_completed?: boolean;
+  profile_completion?: number;
+  educations?: Education[];
   created_at: string;
   updated_at?: string;
 }
@@ -18,14 +52,13 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
-  assigned_to: number | null;
   created_by: number;
   start_date: string | null;
   end_date: string | null;
   position: number;
   created_at: string;
   updated_at: string;
-  assignee?: User | null;
+  assignees?: User[];
   creator?: User;
   comments?: Comment[];
   attachments?: Attachment[];

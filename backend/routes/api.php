@@ -10,8 +10,7 @@ use App\Http\Controllers\Api\TaskController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Public routes
-Route::post('/register', [AuthController::class, 'register']);
+// Public routes (registration removed - admin creates users)
 Route::post('/login', [AuthController::class, 'login']);
 
 // Authenticated routes
@@ -22,8 +21,19 @@ Route::middleware('auth:api')->group(function () {
     Route::post('/refresh', [AuthController::class, 'refresh']);
 
     // Profile
+    Route::get('/profile', [ProfileController::class, 'show']);
     Route::put('/profile', [ProfileController::class, 'update']);
+    Route::put('/profile/address', [ProfileController::class, 'updateAddress']);
+    Route::put('/profile/password', [ProfileController::class, 'changePassword']);
     Route::post('/profile/avatar', [ProfileController::class, 'uploadAvatar']);
+    Route::post('/profile/cv', [ProfileController::class, 'uploadCv']);
+    Route::delete('/profile/cv', [ProfileController::class, 'deleteCv']);
+
+    // Education
+    Route::get('/profile/educations', [ProfileController::class, 'educations']);
+    Route::post('/profile/educations', [ProfileController::class, 'storeEducation']);
+    Route::put('/profile/educations/{id}', [ProfileController::class, 'updateEducation']);
+    Route::delete('/profile/educations/{id}', [ProfileController::class, 'destroyEducation']);
 
     // Tasks
     Route::get('/tasks', [TaskController::class, 'index']);
@@ -53,7 +63,7 @@ Route::middleware('auth:api')->group(function () {
     // Users list (all authenticated users can fetch basic user info)
     Route::get('/users-list', function () {
         return response()->json(
-            \App\Models\User::select('id', 'name', 'email', 'avatar', 'status')->orderBy('name')->get()
+            \App\Models\User::select('id', 'name', 'email', 'avatar', 'status', 'profile_completed')->orderBy('name')->get()
         );
     });
 

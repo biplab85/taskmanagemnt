@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Pencil, Trash2, Laptop, Coffee, Phone, Palmtree, WifiOff, MoreVertical, LogIn } from 'lucide-react';
+import { Pencil, Trash2, Laptop, Coffee, Phone, Palmtree, WifiOff, MoreVertical, LogIn, CheckCircle2 } from 'lucide-react';
 import type { User, UserStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -97,7 +97,12 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                         </Avatar>
                         {user.status && <UserStatusDot status={user.status} className="absolute -bottom-px -right-px h-2.5 w-2.5 ring-2 ring-card" />}
                       </div>
-                      <span className="font-medium">{user.name}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-medium">{user.name}</span>
+                        {user.profile_completed && (
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" title="Profile Complete" />
+                        )}
+                      </div>
                     </div>
                   </TableCell>
                   <TableCell className="text-muted-foreground">{user.email}</TableCell>

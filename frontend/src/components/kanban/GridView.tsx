@@ -3,7 +3,8 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
-import { Calendar, Pencil, Trash2 } from 'lucide-react';
+import { UserHoverCard } from '@/components/shared/UserHoverCard';
+import { Calendar, Pencil, Trash2, Check } from 'lucide-react';
 
 interface GridViewProps {
   tasks: Task[];
@@ -23,7 +24,7 @@ export function GridView({ tasks, onView, onEdit, onDelete }: GridViewProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 animate-fade-in">
       {sorted.map((task, i) => {
-        const initials = task.assignee?.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+        const assignees = task.assignees || [];
         return (
           <div
             key={task.id}
@@ -81,15 +82,34 @@ export function GridView({ tasks, onView, onEdit, onDelete }: GridViewProps) {
                   )}
                 </div>
 
-                {task.assignee ? (
-                  <div className="relative">
-                    <Avatar className="h-7 w-7 ring-1 ring-border">
-                      {task.assignee.avatar && <AvatarImage src={`/storage/${task.assignee.avatar}`} />}
-                      <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
-                        {initials}
-                      </AvatarFallback>
-                    </Avatar>
-                    {task.assignee.status && <UserStatusDot status={task.assignee.status} className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-card" />}
+                {assignees.length > 0 ? (
+                  <div className="flex -space-x-1.5">
+                    {assignees.slice(0, 3).map((u) => {
+                      const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                      return (
+                        <UserHoverCard key={u.id} user={u}>
+                          <div className="relative cursor-pointer">
+                            <Avatar className="h-7 w-7 ring-2 ring-card">
+                              {u.avatar && <AvatarImage src={`/storage/${u.avatar}`} />}
+                              <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
+                                {initials}
+                              </AvatarFallback>
+                            </Avatar>
+                            {u.status && <UserStatusDot status={u.status} className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-card" />}
+                            {u.profile_completed && (
+                              <span className="absolute -top-px -left-px flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 text-white ring-1 ring-card" title="Profile Complete">
+                                <Check className="h-1.5 w-1.5" strokeWidth={3} />
+                              </span>
+                            )}
+                          </div>
+                        </UserHoverCard>
+                      );
+                    })}
+                    {assignees.length > 3 && (
+                      <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted ring-2 ring-card text-[10px] font-bold text-muted-foreground">
+                        +{assignees.length - 3}
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <span className="text-[11px] text-muted-foreground">Unassigned</span>

@@ -3,6 +3,7 @@ import type { Task } from '@/types';
 import { TASK_STATUSES } from '@/types';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
@@ -148,7 +149,9 @@ export function CalendarView({ tasks, onView }: CalendarViewProps) {
 
               <div className="space-y-0.5">
                 {dayTasks.slice(0, 3).map((task) => {
-                  const initials = task.assignee?.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 1);
+                  const assignees = task.assignees || [];
+                  const firstAssignee = assignees[0];
+                  const firstInitial = firstAssignee?.name?.charAt(0).toUpperCase();
                   return (
                     <button
                       key={task.id}
@@ -163,13 +166,20 @@ export function CalendarView({ tasks, onView }: CalendarViewProps) {
                       <span className="text-[10px] font-medium truncate flex-1 transition-colors group-hover/cal:text-brand-600">
                         {task.title}
                       </span>
-                      {task.assignee && (
-                        <Avatar className="h-4 w-4 shrink-0">
-                          {task.assignee.avatar && <AvatarImage src={`/storage/${task.assignee.avatar}`} />}
-                          <AvatarFallback className="bg-brand-100 text-brand-700 text-[6px] font-bold dark:bg-brand-900 dark:text-brand-300">
-                            {initials}
-                          </AvatarFallback>
-                        </Avatar>
+                      {firstAssignee && (
+                        <UserHoverCard user={firstAssignee}>
+                          <div className="flex items-center gap-0.5 shrink-0 cursor-pointer" onClick={(e) => e.stopPropagation()}>
+                            <Avatar className="h-4 w-4">
+                              {firstAssignee.avatar && <AvatarImage src={`/storage/${firstAssignee.avatar}`} />}
+                              <AvatarFallback className="bg-brand-100 text-brand-700 text-[6px] font-bold dark:bg-brand-900 dark:text-brand-300">
+                                {firstInitial}
+                              </AvatarFallback>
+                            </Avatar>
+                            {assignees.length > 1 && (
+                              <span className="text-[8px] font-bold text-muted-foreground">+{assignees.length - 1}</span>
+                            )}
+                          </div>
+                        </UserHoverCard>
                       )}
                     </button>
                   );

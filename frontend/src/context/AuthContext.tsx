@@ -1,19 +1,22 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from 'react';
 import api from '@/api/axios';
 import type { User, AuthResponse, UserStatus } from '@/types';
 import { toast } from 'sonner';
+
+type StatusChangeListener = (userId: number, status: UserStatus) => void;
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
   login: (email: string, password: string) => Promise<void>;
   loginAs: (userId: number) => Promise<void>;
-  register: (name: string, email: string, password: string, passwordConfirmation: string) => Promise<void>;
   logout: () => Promise<void>;
   updateUserStatus: (status: UserStatus) => Promise<void>;
   refreshUser: () => Promise<void>;
+  onStatusChange: (listener: StatusChangeListener) => () => void;
   loading: boolean;
   isAdmin: boolean;
+  needsProfileCompletion: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -22,6 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
   const [loading, setLoading] = useState(true);
+  const statusListenersRef = useRef<Set<StatusChangeListener>>(new Set());
 
   useEffect(() => {
     const initAuth = async () => {
@@ -60,21 +64,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(userData);
   };
 
-  const register = async (name: string, email: string, password: string, passwordConfirmation: string) => {
-    const response = await api.post<AuthResponse>('/register', {
-      name,
-      email,
-      password,
-      password_confirmation: passwordConfirmation,
-    });
-    const { access_token, user: userData } = response.data;
-    localStorage.setItem('token', access_token);
-    localStorage.setItem('user', JSON.stringify(userData));
-    setToken(access_token);
-    setUser(userData);
-    toast.success('Account created successfully!');
-  };
-
   const logout = async () => {
     try {
       await api.post('/logout');
@@ -92,11 +81,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await api.put('/profile', { name: user?.name, email: user?.email, status });
       setUser((prev) => prev ? { ...prev, status } : prev);
+      // Notify all listeners about the status change
+      if (user) {
+        statusListenersRef.current.forEach((listener) => listener(user.id, status));
+      }
       toast.success('Status updated');
     } catch {
       toast.error('Failed to update status');
     }
   };
+
+  const onStatusChange = useCallback((listener: StatusChangeListener) => {
+    statusListenersRef.current.add(listener);
+    return () => { statusListenersRef.current.delete(listener); };
+  }, []);
 
   const refreshUser = useCallback(async () => {
     try {
@@ -106,9 +104,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const isAdmin = user?.role === 'admin';
+  const needsProfileCompletion = !!user && (user.profile_completion ?? 0) < 100 && !user.profile_completed;
 
   return (
-    <AuthContext.Provider value={{ user, token, login, loginAs, register, logout, updateUserStatus, refreshUser, loading, isAdmin }}>
+    <AuthContext.Provider value={{ user, token, login, loginAs, logout, updateUserStatus, refreshUser, onStatusChange, loading, isAdmin, needsProfileCompletion }}>
       {children}
     </AuthContext.Provider>
   );

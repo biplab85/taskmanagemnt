@@ -11,7 +11,6 @@ class Task extends Model
         'description',
         'status',
         'priority',
-        'assigned_to',
         'created_by',
         'start_date',
         'end_date',
@@ -27,9 +26,9 @@ class Task extends Model
         ];
     }
 
-    public function assignee()
+    public function assignees()
     {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return $this->belongsToMany(User::class, 'task_user');
     }
 
     public function creator()

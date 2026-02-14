@@ -17,8 +17,9 @@ import {
 import { arrayMove } from '@dnd-kit/sortable';
 import { Plus, Search, Filter } from 'lucide-react';
 import api from '@/api/axios';
-import type { Task, TaskStatus, User } from '@/types';
+import type { Task, TaskStatus, User, UserStatus } from '@/types';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 import { KanbanColumn } from './KanbanColumn';
 import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
@@ -40,6 +41,7 @@ import {
 import { toast } from 'sonner';
 
 export function KanbanBoard() {
+  const { onStatusChange } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -88,6 +90,25 @@ export function KanbanBoard() {
   }, []);
 
   useEffect(() => { fetchTasks(); fetchUsers(); }, [fetchTasks, fetchUsers]);
+
+  // Subscribe to user status changes from the auth context
+  useEffect(() => {
+    return onStatusChange((userId: number, newStatus: UserStatus) => {
+      // Update the users list
+      setUsers((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u))
+      );
+      // Update assignees inside each task
+      setTasks((prev) =>
+        prev.map((t) => ({
+          ...t,
+          assignees: t.assignees?.map((a) =>
+            a.id === userId ? { ...a, status: newStatus } : a
+          ),
+        }))
+      );
+    });
+  }, [onStatusChange]);
 
   const getTasksByStatus = (status: TaskStatus) =>
     tasks.filter((t) => t.status === status).sort((a, b) => a.position - b.position);

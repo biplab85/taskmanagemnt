@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::select('id', 'name', 'email', 'role', 'can_view_all_tasks', 'avatar', 'status', 'created_at')
+        $users = User::select('id', 'name', 'email', 'role', 'can_view_all_tasks', 'avatar', 'status', 'phone', 'department', 'location', 'profile_completed', 'created_at')
             ->orderBy('created_at', 'desc')
             ->get();
 

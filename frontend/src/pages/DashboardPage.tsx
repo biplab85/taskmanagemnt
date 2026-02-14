@@ -573,7 +573,9 @@ export function DashboardPage() {
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{task.title}</p>
                       <p className="text-xs text-muted-foreground">
-                        {task.assignee ? task.assignee.name : 'Unassigned'}
+                        {task.assignees && task.assignees.length > 0
+                          ? task.assignees.map((u) => u.name).join(', ')
+                          : 'Unassigned'}
                       </p>
                     </div>
                   </div>

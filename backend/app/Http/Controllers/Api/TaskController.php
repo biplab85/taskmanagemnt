@@ -15,12 +15,13 @@ class TaskController extends Controller
     {
         $user = auth()->user();
 
-        $query = Task::with(['assignee:id,name,email,avatar,status', 'creator:id,name,email,avatar']);
+        $query = Task::with(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'creator:id,name,email,avatar']);
 
         if (!$user->isAdmin() && !$user->can_view_all_tasks) {
             $query->where(function ($q) use ($user) {
-                $q->where('assigned_to', $user->id)
-                  ->orWhere('created_by', $user->id);
+                $q->whereHas('assignees', function ($q2) use ($user) {
+                    $q2->where('users.id', $user->id);
+                })->orWhere('created_by', $user->id);
             });
         }
 
@@ -35,7 +36,9 @@ class TaskController extends Controller
         }
 
         if ($request->has('assigned_to') && $request->assigned_to) {
-            $query->where('assigned_to', $request->assigned_to);
+            $query->whereHas('assignees', function ($q) use ($request) {
+                $q->where('users.id', $request->assigned_to);
+            });
         }
 
         if ($request->has('search') && $request->search) {
@@ -66,7 +69,8 @@ class TaskController extends Controller
             'description' => 'nullable|string',
             'status' => 'nullable|in:backlog,todo,in_progress,review,complete',
             'priority' => 'nullable|in:low,medium,high,urgent',
-            'assigned_to' => 'nullable|exists:users,id',
+            'assignees' => 'nullable|array',
+            'assignees.*' => 'exists:users,id',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date|after_or_equal:start_date',
         ]);
@@ -75,21 +79,28 @@ class TaskController extends Controller
             return response()->json(['errors' => $validator->errors()], 422);
         }
 
-        $maxPosition = Task::where('status', $request->status ?? 'backlog')->max('position') ?? 0;
+        // Shift existing tasks down to make room at position 0
+        $targetStatus = $request->status ?? 'backlog';
+        Task::where('status', $targetStatus)->increment('position');
 
         $task = Task::create([
             'title' => $request->title,
             'description' => $request->description,
-            'status' => $request->status ?? 'backlog',
+            'status' => $targetStatus,
             'priority' => $request->priority ?? 'medium',
-            'assigned_to' => $request->assigned_to,
             'created_by' => auth()->id(),
             'start_date' => $request->start_date,
             'end_date' => $request->end_date,
-            'position' => $maxPosition + 1,
+            'position' => 0,
         ]);
 
-        $task->load(['assignee:id,name,email,avatar,status', 'creator:id,name,email,avatar']);
+        // Sync assignees
+        $assigneeIds = $request->assignees ?? [];
+        if (!empty($assigneeIds)) {
+            $task->assignees()->sync($assigneeIds);
+        }
+
+        $task->load(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'creator:id,name,email,avatar']);
 
         // Activity log
         ActivityLog::create([
@@ -111,15 +122,17 @@ class TaskController extends Controller
             'type' => 'task_created',
         ]);
 
-        // Notify assignee (if different from creator)
-        if ($task->assigned_to && $task->assigned_to !== $currentUserId) {
-            Notification::create([
-                'user_id' => $task->assigned_to,
-                'task_id' => $task->id,
-                'title' => 'Task Assigned',
-                'message' => $currentUserName . ' assigned you to "' . $task->title . '"',
-                'type' => 'task_assigned',
-            ]);
+        // Notify each assignee (if different from creator)
+        foreach ($assigneeIds as $assigneeId) {
+            if ((int) $assigneeId !== $currentUserId) {
+                Notification::create([
+                    'user_id' => $assigneeId,
+                    'task_id' => $task->id,
+                    'title' => 'Task Assigned',
+                    'message' => $currentUserName . ' assigned you to "' . $task->title . '"',
+                    'type' => 'task_assigned',
+                ]);
+            }
         }
 
         return response()->json($task, 201);
@@ -128,7 +141,7 @@ class TaskController extends Controller
     public function show($id)
     {
         $task = Task::with([
-            'assignee:id,name,email,avatar,status',
+            'assignees:id,name,email,avatar,status,phone,department,location,profile_completed',
             'creator:id,name,email,avatar',
             'comments.user:id,name,email,avatar',
             'attachments.user:id,name,email',
@@ -141,14 +154,15 @@ class TaskController extends Controller
     {
         $task = Task::findOrFail($id);
         $oldStatus = $task->status;
-        $oldAssignee = $task->assigned_to;
+        $oldAssigneeIds = $task->assignees()->pluck('users.id')->toArray();
 
         $validator = Validator::make($request->all(), [
             'title' => 'sometimes|required|string|max:255',
             'description' => 'nullable|string',
             'status' => 'nullable|in:backlog,todo,in_progress,review,complete',
             'priority' => 'nullable|in:low,medium,high,urgent',
-            'assigned_to' => 'nullable|exists:users,id',
+            'assignees' => 'sometimes|nullable|array',
+            'assignees.*' => 'exists:users,id',
             'start_date' => 'nullable|date',
             'end_date' => 'nullable|date',
         ]);
@@ -159,13 +173,20 @@ class TaskController extends Controller
 
         $task->update($request->only([
             'title', 'description', 'status', 'priority',
-            'assigned_to', 'start_date', 'end_date',
+            'start_date', 'end_date',
         ]));
 
-        $task->load(['assignee:id,name,email,avatar,status', 'creator:id,name,email,avatar']);
+        // Sync assignees if provided in request
+        if ($request->has('assignees')) {
+            $newAssigneeIds = $request->assignees ?? [];
+            $task->assignees()->sync($newAssigneeIds);
+        }
+
+        $task->load(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'creator:id,name,email,avatar']);
 
         $currentUserId = auth()->id();
         $currentUserName = auth()->user()->name;
+        $currentAssigneeIds = $task->assignees->pluck('id')->toArray();
 
         // Activity log + notifications
         if ($oldStatus !== $task->status) {
@@ -176,8 +197,9 @@ class TaskController extends Controller
                 'description' => 'Changed status from "' . $oldStatus . '" to "' . $task->status . '"',
             ]);
 
-            // Notify ALL involved users (assignee + creator) INCLUDING self
-            $notifyUsers = collect([$task->assigned_to, $task->created_by])
+            // Notify ALL involved users (assignees + creator) INCLUDING self
+            $notifyUsers = collect($currentAssigneeIds)
+                ->merge([$task->created_by])
                 ->filter()
                 ->unique();
 
@@ -200,7 +222,8 @@ class TaskController extends Controller
             ]);
 
             // Notify ALL involved users INCLUDING self
-            $notifyUsers = collect([$task->assigned_to, $task->created_by])
+            $notifyUsers = collect($currentAssigneeIds)
+                ->merge([$task->created_by])
                 ->filter()
                 ->unique();
 
@@ -216,15 +239,20 @@ class TaskController extends Controller
             }
         }
 
-        // Notify new assignee (if changed and not self)
-        if ($task->assigned_to && $task->assigned_to !== $oldAssignee && $task->assigned_to !== $currentUserId) {
-            Notification::create([
-                'user_id' => $task->assigned_to,
-                'task_id' => $task->id,
-                'title' => 'Task Assigned',
-                'message' => $currentUserName . ' assigned you to "' . $task->title . '"',
-                'type' => 'task_assigned',
-            ]);
+        // Notify newly added assignees
+        if ($request->has('assignees')) {
+            $addedAssignees = array_diff($currentAssigneeIds, $oldAssigneeIds);
+            foreach ($addedAssignees as $assigneeId) {
+                if ((int) $assigneeId !== $currentUserId) {
+                    Notification::create([
+                        'user_id' => $assigneeId,
+                        'task_id' => $task->id,
+                        'title' => 'Task Assigned',
+                        'message' => $currentUserName . ' assigned you to "' . $task->title . '"',
+                        'type' => 'task_assigned',
+                    ]);
+                }
+            }
         }
 
         return response()->json($task);

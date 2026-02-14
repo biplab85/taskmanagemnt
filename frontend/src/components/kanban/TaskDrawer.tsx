@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import api from '@/api/axios';
-import type { Task, User, Attachment, Comment, ActivityLog } from '@/types';
+import type { Task, User, Attachment, Comment, ActivityLog, UserStatus } from '@/types';
 import { TASK_STATUSES, TASK_PRIORITIES } from '@/types';
+import { useAuth } from '@/context/AuthContext';
 import {
   Sheet,
   SheetContent,
@@ -25,6 +26,8 @@ import { UserStatusDot } from '@/components/shared/UserStatusDot';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { FileUpload } from '@/components/shared/FileUpload';
+import { MultiUserSelect } from '@/components/shared/MultiUserSelect';
+import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import {
   Calendar,
   Clock,
@@ -41,6 +44,7 @@ import {
   Activity,
   Paperclip,
   MessageSquare,
+  Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -65,6 +69,7 @@ function formatSize(bytes: number) {
 }
 
 export function TaskDrawer({ open, onOpenChange, taskId, users, onTaskUpdated }: TaskDrawerProps) {
+  const { onStatusChange } = useAuth();
   const [task, setTask] = useState<Task | null>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
@@ -80,7 +85,7 @@ export function TaskDrawer({ open, onOpenChange, taskId, users, onTaskUpdated }:
   const [editDescription, setEditDescription] = useState('');
   const [editStatus, setEditStatus] = useState('backlog');
   const [editPriority, setEditPriority] = useState('medium');
-  const [editAssignedTo, setEditAssignedTo] = useState('');
+  const [editAssigneeIds, setEditAssigneeIds] = useState<number[]>([]);
   const [editStartDate, setEditStartDate] = useState('');
   const [editEndDate, setEditEndDate] = useState('');
   const [saving, setSaving] = useState(false);
@@ -103,7 +108,7 @@ export function TaskDrawer({ open, onOpenChange, taskId, users, onTaskUpdated }:
         setEditDescription(t.description || '');
         setEditStatus(t.status);
         setEditPriority(t.priority);
-        setEditAssignedTo(t.assigned_to?.toString() || '');
+        setEditAssigneeIds(t.assignees?.map((u) => u.id) || []);
         setEditStartDate(t.start_date || '');
         setEditEndDate(t.end_date || '');
         setLoading(false);
@@ -114,10 +119,25 @@ export function TaskDrawer({ open, onOpenChange, taskId, users, onTaskUpdated }:
     }
   }, [open, taskId]);
 
+  // Subscribe to user status changes
+  useEffect(() => {
+    return onStatusChange((userId: number, newStatus: UserStatus) => {
+      setTask((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          assignees: prev.assignees?.map((a) =>
+            a.id === userId ? { ...a, status: newStatus } : a
+          ),
+        };
+      });
+    });
+  }, [onStatusChange]);
+
   const handleQuickStatusChange = async (newStatus: string) => {
     if (!task) return;
     try {
-      await api.put(`/tasks/${task.id}`, { ...task, status: newStatus, assigned_to: task.assigned_to });
+      await api.put(`/tasks/${task.id}`, { status: newStatus });
       setTask({ ...task, status: newStatus as Task['status'] });
       setEditStatus(newStatus);
       onTaskUpdated();
@@ -136,7 +156,7 @@ export function TaskDrawer({ open, onOpenChange, taskId, users, onTaskUpdated }:
         description: editDescription || null,
         status: editStatus,
         priority: editPriority,
-        assigned_to: editAssignedTo ? Number(editAssignedTo) : null,
+        assignees: editAssigneeIds,
         start_date: editStartDate || null,
         end_date: editEndDate || null,
       });
@@ -196,8 +216,7 @@ export function TaskDrawer({ open, onOpenChange, taskId, users, onTaskUpdated }:
   };
 
   const statusInfo = TASK_STATUSES.find((s) => s.value === task?.status);
-  const assignee = task?.assignee || users.find((u) => u.id === task?.assigned_to);
-  const assigneeInitials = assignee?.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+  const assignees = task?.assignees || [];
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -298,29 +317,42 @@ export function TaskDrawer({ open, onOpenChange, taskId, users, onTaskUpdated }:
                     <div className="space-y-1.5">
                       <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
                         <UserIcon className="h-3 w-3" />
-                        Assignee
+                        Assignees
                       </Label>
                       {editing ? (
-                        <Select value={editAssignedTo} onValueChange={setEditAssignedTo}>
-                          <SelectTrigger className="h-9"><SelectValue placeholder="Unassigned" /></SelectTrigger>
-                          <SelectContent>
-                            {users.map((u) => (
-                              <SelectItem key={u.id} value={u.id.toString()}>{u.name}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      ) : assignee ? (
-                        <div className="flex items-center gap-2">
-                          <div className="relative">
-                            <Avatar className="h-7 w-7 ring-1 ring-border">
-                              {assignee.avatar && <AvatarImage src={`/storage/${assignee.avatar}`} />}
-                              <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
-                                {assigneeInitials}
-                              </AvatarFallback>
-                            </Avatar>
-                            {assignee.status && <UserStatusDot status={assignee.status} className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-card" />}
+                        <MultiUserSelect
+                          users={users}
+                          selectedIds={editAssigneeIds}
+                          onChange={setEditAssigneeIds}
+                        />
+                      ) : assignees.length > 0 ? (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <div className="flex -space-x-2">
+                            {assignees.slice(0, 4).map((u) => {
+                              const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                              return (
+                                <UserHoverCard key={u.id} user={u}>
+                                  <div className="relative cursor-pointer">
+                                    <Avatar className="h-7 w-7 ring-2 ring-background">
+                                      {u.avatar && <AvatarImage src={`/storage/${u.avatar}`} />}
+                                      <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
+                                        {initials}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    {u.status && <UserStatusDot status={u.status} className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-card" />}
+                                    {u.profile_completed && (
+                                      <span className="absolute -top-px -left-px flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 text-white ring-1 ring-card" title="Profile Complete">
+                                        <Check className="h-1.5 w-1.5" strokeWidth={3} />
+                                      </span>
+                                    )}
+                                  </div>
+                                </UserHoverCard>
+                              );
+                            })}
                           </div>
-                          <span className="text-sm font-medium">{assignee.name}</span>
+                          <span className="text-sm font-medium">
+                            {assignees.map((u) => u.name).join(', ')}
+                          </span>
                         </div>
                       ) : (
                         <span className="text-sm text-muted-foreground">Unassigned</span>

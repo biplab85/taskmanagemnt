@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Link, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
@@ -76,8 +76,7 @@ export function LoginPage() {
             </Button>
           </form>
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Don&apos;t have an account?{' '}
-            <Link to="/register" className="font-semibold text-brand-600 hover:text-brand-700 transition-colors cursor-pointer">Sign up</Link>
+            Contact your administrator to get an account.
           </p>
         </CardContent>
       </Card>

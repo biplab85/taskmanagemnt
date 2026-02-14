@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Columns3, Users, UserCircle, Settings, Inbox } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { LayoutDashboard, Columns3, Users, UserCircle, Settings, Inbox, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import api from '@/api/axios';
@@ -18,8 +18,9 @@ const adminItems = [
 ];
 
 export function Sidebar() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, needsProfileCompletion, user } = useAuth();
   const { settings } = useSettings();
+  const navigate = useNavigate();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -100,6 +101,23 @@ export function Sidebar() {
         )}
       </nav>
 
+      {needsProfileCompletion && (
+        <div className="px-3 pb-2">
+          <button
+            onClick={() => navigate('/profile')}
+            className="flex w-full items-center gap-2.5 rounded-xl bg-amber-500/15 px-3 py-2.5 text-left transition-all hover:bg-amber-500/25 cursor-pointer"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[11px] font-semibold text-amber-300">Complete Profile</p>
+              <div className="mt-1 h-1.5 w-full rounded-full bg-sidebar-border overflow-hidden">
+                <div className="h-full rounded-full bg-amber-400 transition-all duration-500" style={{ width: `${user?.profile_completion ?? 0}%` }} />
+              </div>
+            </div>
+            <span className="text-[11px] font-bold text-amber-400">{user?.profile_completion ?? 0}%</span>
+          </button>
+        </div>
+      )}
       <div className="border-t border-sidebar-border px-3 py-4">
         <p className="text-[11px] text-sidebar-foreground/30 text-center truncate">{settings.projectName} &middot; v1.0</p>
       </div>
