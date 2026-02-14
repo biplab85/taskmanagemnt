@@ -123,13 +123,14 @@ function getPasswordStrength(pw: string): { label: string; color: string; pct: n
 
 function extractAddress(user: User | null, prefix: 'present' | 'permanent'): AddressFields {
   if (!user) return { ...EMPTY_ADDRESS };
+  const record = user as unknown as Record<string, unknown>;
   return {
-    village: (user as Record<string, unknown>)[`${prefix}_village`] as string || '',
-    city: (user as Record<string, unknown>)[`${prefix}_city`] as string || '',
-    thana: (user as Record<string, unknown>)[`${prefix}_thana`] as string || '',
-    post_office: (user as Record<string, unknown>)[`${prefix}_post_office`] as string || '',
-    division: (user as Record<string, unknown>)[`${prefix}_division`] as string || '',
-    country: (user as Record<string, unknown>)[`${prefix}_country`] as string || '',
+    village: record[`${prefix}_village`] as string || '',
+    city: record[`${prefix}_city`] as string || '',
+    thana: record[`${prefix}_thana`] as string || '',
+    post_office: record[`${prefix}_post_office`] as string || '',
+    division: record[`${prefix}_division`] as string || '',
+    country: record[`${prefix}_country`] as string || '',
   };
 }
 

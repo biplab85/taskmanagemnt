@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import {
   ClipboardList, Clock, CheckCircle2, ListTodo, Activity, TrendingUp,
   Calendar, Users, X, Loader2, InboxIcon, Search, SlidersHorizontal,
@@ -93,7 +93,7 @@ function countActiveFilters(f: Filters, isAdmin: boolean): number {
 
 export function DashboardPage() {
   const { user } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const isAdmin = user?.role === 'admin';
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -561,7 +561,7 @@ export function DashboardPage() {
         <Card className={`border-0 shadow-md transition-opacity duration-200 ${filterLoading ? 'opacity-60' : ''}`}>
           <CardHeader className="flex flex-row items-center justify-between pb-3">
             <CardTitle className="text-base">Recent Tasks</CardTitle>
-            <button onClick={() => navigate('/kanban')} className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors cursor-pointer">
+            <button onClick={() => router.push('/kanban')} className="text-sm font-medium text-brand-600 hover:text-brand-700 transition-colors cursor-pointer">
               View all &rarr;
             </button>
           </CardHeader>

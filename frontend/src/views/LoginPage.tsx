@@ -1,5 +1,5 @@
-import { useState, type FormEvent } from 'react';
-import { Navigate } from 'react-router-dom';
+import { useState, useEffect, type FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import { Button } from '@/components/ui/button';
@@ -14,13 +14,20 @@ export function LoginPage() {
   const { login, user, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { settings } = useSettings();
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
+  useEffect(() => {
+    if (!loading && user) {
+      router.replace('/dashboard');
+    }
+  }, [user, loading, router]);
+
   if (!loading && user) {
-    return <Navigate to="/dashboard" replace />;
+    return null;
   }
 
   const handleSubmit = async (e: FormEvent) => {

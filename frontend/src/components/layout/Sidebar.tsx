@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
-import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Columns3, Users, UserCircle, Settings, Inbox, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
+import { usePathname, useRouter } from 'next/navigation';
+import { LayoutDashboard, Columns3, Users, UserCircle, Settings, Inbox, AlertCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
+import { useSidebar } from '@/context/SidebarContext';
 import api from '@/api/axios';
 
 const navItems = [
@@ -20,7 +22,9 @@ const adminItems = [
 export function Sidebar() {
   const { isAdmin, needsProfileCompletion, user } = useAuth();
   const { settings } = useSettings();
-  const navigate = useNavigate();
+  const { isCollapsed, toggleSidebar } = useSidebar();
+  const pathname = usePathname();
+  const router = useRouter();
   const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
@@ -35,76 +39,108 @@ export function Sidebar() {
   }, []);
 
   return (
-    <aside className="sidebar-wrapper fixed left-0 top-0 z-40 flex h-screen w-64 flex-col bg-sidebar-bg text-sidebar-foreground">
-      <div className="flex h-16 items-center justify-center border-b border-sidebar-border px-6">
-        <div className="flex items-center justify-center">
-          {settings.logoUrl ? (
-            <img src={settings.logoUrl} alt={settings.projectName} className="h-full w-full object-contain p-0.5" />
-          ) : (
-            settings.logoText || 'S'
-          )}
-        </div>
+    <aside className={`sidebar-wrapper fixed left-0 top-0 z-40 flex h-screen flex-col bg-sidebar-bg text-sidebar-foreground transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+      {/* Logo */}
+      <div className={`relative flex h-16 items-center border-b border-sidebar-border ${isCollapsed ? 'justify-center px-2' : 'px-5'}`}>
+        {isCollapsed ? (
+          <span className="text-2xl font-bold">{(settings.logoText || 'S').charAt(0)}</span>
+        ) : settings.logoUrl ? (
+          <img src={settings.logoUrl} alt={settings.projectName} className="w-full object-contain" />
+        ) : (
+          <span className="text-2xl font-bold tracking-tight">{settings.logoText || 'SKLENTR'}</span>
+        )}
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
-        <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-          Menu
-        </p>
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            className={({ isActive }) =>
-              `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
+      {/* Collapse toggle — absolute, straddles sidebar edge */}
+      <button
+        onClick={toggleSidebar}
+        title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+        className="absolute top-5 -right-3 z-50 flex h-6 w-6 items-center justify-center rounded-full border border-sidebar-border bg-sidebar-bg text-sidebar-foreground/60 shadow-md transition-colors hover:bg-sidebar-accent hover:text-white cursor-pointer"
+      >
+        {isCollapsed ? (
+          <PanelLeftOpen className="h-3.5 w-3.5" />
+        ) : (
+          <PanelLeftClose className="h-3.5 w-3.5" />
+        )}
+      </button>
+
+      {/* Navigation */}
+      <nav className="flex-1 space-y-1 px-2 py-4">
+        {!isCollapsed && (
+          <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+            Menu
+          </p>
+        )}
+        {navItems.map((item) => {
+          const isActive = pathname === item.to;
+          return (
+            <Link
+              key={item.to}
+              href={item.to}
+              title={isCollapsed ? item.label : undefined}
+              className={`group relative flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
+                isCollapsed ? 'justify-center' : 'gap-3'
+              } ${
                 isActive
                   ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/25'
                   : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-white'
-              }`
-            }
-          >
-            <item.icon className="h-[18px] w-[18px]" />
-            <span className="flex-1">{item.label}</span>
-            {item.showBadge && unreadCount > 0 && (
-              <span className="flex items-center gap-1.5">
-                <span className="h-2 w-2 rounded-full bg-red-500 animate-blink" />
-                <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
-              </span>
-            )}
-          </NavLink>
-        ))}
+              }`}
+            >
+              <item.icon className="h-[18px] w-[18px] shrink-0" />
+              {!isCollapsed && <span className="flex-1">{item.label}</span>}
+              {item.showBadge && unreadCount > 0 && (
+                isCollapsed ? (
+                  <span className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-sidebar-bg" />
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 rounded-full bg-red-500 animate-blink" />
+                    <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  </span>
+                )
+              )}
+            </Link>
+          );
+        })}
 
         {isAdmin && (
           <>
             <div className="my-4 border-t border-sidebar-border" />
-            <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-              Admin
-            </p>
-            {adminItems.map((item) => (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                className={({ isActive }) =>
-                  `group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
+            {!isCollapsed && (
+              <p className="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+                Admin
+              </p>
+            )}
+            {adminItems.map((item) => {
+              const isActive = pathname === item.to;
+              return (
+                <Link
+                  key={item.to}
+                  href={item.to}
+                  title={isCollapsed ? item.label : undefined}
+                  className={`group flex items-center rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200 cursor-pointer ${
+                    isCollapsed ? 'justify-center' : 'gap-3'
+                  } ${
                     isActive
                       ? 'bg-brand-600 text-white shadow-lg shadow-brand-600/25'
                       : 'text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-white'
-                  }`
-                }
-              >
-                <item.icon className="h-[18px] w-[18px]" />
-                {item.label}
-              </NavLink>
-            ))}
+                  }`}
+                >
+                  <item.icon className="h-[18px] w-[18px] shrink-0" />
+                  {!isCollapsed && item.label}
+                </Link>
+              );
+            })}
           </>
         )}
       </nav>
 
-      {needsProfileCompletion && (
+      {/* Profile completion banner — hidden when collapsed */}
+      {!isCollapsed && needsProfileCompletion && (
         <div className="px-3 pb-2">
           <button
-            onClick={() => navigate('/profile')}
+            onClick={() => router.push('/profile')}
             className="flex w-full items-center gap-2.5 rounded-xl bg-amber-500/15 px-3 py-2.5 text-left transition-all hover:bg-amber-500/25 cursor-pointer"
           >
             <AlertCircle className="h-4 w-4 shrink-0 text-amber-400" />
@@ -118,9 +154,13 @@ export function Sidebar() {
           </button>
         </div>
       )}
-      <div className="border-t border-sidebar-border px-3 py-4">
-        <p className="text-[11px] text-sidebar-foreground/30 text-center truncate">{settings.projectName} &middot; v1.0</p>
-      </div>
+
+      {/* Footer */}
+      {!isCollapsed && (
+        <div className="border-t border-sidebar-border px-3 py-4">
+          <p className="text-[11px] text-sidebar-foreground/30 text-center truncate">{settings.projectName} &middot; v1.0</p>
+        </div>
+      )}
     </aside>
   );
 }

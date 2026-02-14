@@ -103,19 +103,24 @@ function applySettings(settings: AppSettings) {
 }
 
 export function SettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<AppSettings>(() => {
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [mounted, setMounted] = useState(false);
+
+  // Read stored settings after hydration to avoid mismatch
+  useEffect(() => {
     try {
       const stored = localStorage.getItem('app-settings');
-      return stored ? { ...DEFAULT_SETTINGS, ...JSON.parse(stored) } : DEFAULT_SETTINGS;
-    } catch {
-      return DEFAULT_SETTINGS;
-    }
-  });
+      if (stored) setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(stored) });
+    } catch { /* ignore */ }
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     applySettings(settings);
-    localStorage.setItem('app-settings', JSON.stringify(settings));
-  }, [settings]);
+    if (mounted) {
+      localStorage.setItem('app-settings', JSON.stringify(settings));
+    }
+  }, [settings, mounted]);
 
   // Load Google Fonts dynamically
   useEffect(() => {

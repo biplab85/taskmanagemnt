@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useRouter } from 'next/navigation';
 import { Pencil, Trash2, Laptop, Coffee, Phone, Palmtree, WifiOff, MoreVertical, LogIn, CheckCircle2 } from 'lucide-react';
 import type { User, UserStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
@@ -48,7 +48,7 @@ interface UserTableProps {
 
 export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
   const { user: currentUser, isAdmin, loginAs } = useAuth();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [impersonateTarget, setImpersonateTarget] = useState<User | null>(null);
   const [impersonating, setImpersonating] = useState(false);
 
@@ -59,7 +59,7 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
       await loginAs(impersonateTarget.id);
       toast.success(`Logged in as ${impersonateTarget.name}`);
       setImpersonateTarget(null);
-      navigate('/dashboard', { replace: true });
+      router.replace('/dashboard');
     } catch {
       toast.error('Failed to impersonate user');
     } finally {
@@ -100,7 +100,7 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium">{user.name}</span>
                         {user.profile_completed && (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" title="Profile Complete" />
+                          <span title="Profile Complete"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" /></span>
                         )}
                       </div>
                     </div>

@@ -23,22 +23,31 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [token, setToken] = useState<string | null>(localStorage.getItem('token'));
+  const [token, setToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const statusListenersRef = useRef<Set<StatusChangeListener>>(new Set());
 
+  // Read token from localStorage after hydration, then fetch user
   useEffect(() => {
+    const stored = localStorage.getItem('token');
+    if (stored) {
+      setToken(stored);
+    } else {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (token === null) return;
     const initAuth = async () => {
-      if (token) {
-        try {
-          const response = await api.get<User>('/user');
-          setUser(response.data);
-        } catch {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          setToken(null);
-          setUser(null);
-        }
+      try {
+        const response = await api.get<User>('/user');
+        setUser(response.data);
+      } catch {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        setToken(null);
+        setUser(null);
       }
       setLoading(false);
     };

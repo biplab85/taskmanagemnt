@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { LogOut, Moon, Sun, Bell, UserCircle, Settings, Laptop, Coffee, Phone, Palmtree, WifiOff } from 'lucide-react';
-import { useNavigate, Link } from 'react-router-dom';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
 import api from '@/api/axios';
@@ -29,7 +30,7 @@ const STATUS_ICONS: Record<UserStatus, typeof Laptop> = {
 export function Header() {
   const { user, logout, updateUserStatus } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const navigate = useNavigate();
+  const router = useRouter();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -77,7 +78,7 @@ export function Header() {
       await markAsRead(n.id);
     }
     if (n.task_id) {
-      navigate(`/kanban`);
+      router.push('/kanban');
     }
   };
 
@@ -193,7 +194,7 @@ export function Header() {
             <DropdownMenuSeparator />
             <div className="px-3 py-2">
               <Link
-                to="/inbox"
+                href="/inbox"
                 className="block text-center text-xs font-medium text-brand-600 hover:text-brand-700 dark:text-brand-400 dark:hover:text-brand-300"
               >
                 View all notifications
@@ -224,11 +225,11 @@ export function Header() {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/profile')} className="cursor-pointer">
+            <DropdownMenuItem onClick={() => router.push('/profile')} className="cursor-pointer">
               <UserCircle className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/settings')} className="cursor-pointer">
+            <DropdownMenuItem onClick={() => router.push('/settings')} className="cursor-pointer">
               <Settings className="mr-2 h-4 w-4" />
               Settings
             </DropdownMenuItem>
