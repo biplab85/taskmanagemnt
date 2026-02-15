@@ -12,6 +12,7 @@ interface RichTextEditorProps {
 
 export function RichTextEditor({ content, onChange, placeholder = 'Write a description...' }: RichTextEditorProps) {
   const editor = useEditor({
+    immediatelyRender: false,
     extensions: [
       StarterKit,
       Link.configure({ openOnClick: false }),

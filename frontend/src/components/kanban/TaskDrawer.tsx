@@ -223,6 +223,7 @@ export function TaskDrawer({ open, onOpenChange, taskId, users, onTaskUpdated }:
       <SheetContent side="right" className="w-full sm:max-w-xl lg:max-w-2xl p-0 overflow-hidden">
         {loading ? (
           <div className="flex h-full items-center justify-center">
+            <SheetTitle className="sr-only">Loading task</SheetTitle>
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
           </div>
         ) : task ? (
