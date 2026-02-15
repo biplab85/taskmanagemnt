@@ -5,6 +5,7 @@ import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar, Pencil, Trash2, Check } from 'lucide-react';
 
 interface ListViewProps {
@@ -94,9 +95,35 @@ export function ListView({ tasks, onView, onEdit, onDelete }: ListViewProps) {
                               );
                             })}
                             {assignees.length > 2 && (
-                              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-muted ring-2 ring-card text-[10px] font-bold text-muted-foreground">
-                                +{assignees.length - 2}
-                              </div>
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <button
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="flex h-7 w-7 items-center justify-center rounded-full bg-muted ring-2 ring-card text-[10px] font-bold text-muted-foreground hover:bg-accent transition-colors cursor-pointer"
+                                  >
+                                    +{assignees.length - 2}
+                                  </button>
+                                </PopoverTrigger>
+                                <PopoverContent align="end" className="w-48 p-2" onClick={(e) => e.stopPropagation()}>
+                                  <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">All Assignees</p>
+                                  <div className="space-y-1.5">
+                                    {assignees.map((u) => {
+                                      const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                                      return (
+                                        <div key={u.id} className="flex items-center gap-2 px-1">
+                                          <Avatar className="h-6 w-6">
+                                            {u.avatar && <AvatarImage src={`/storage/${u.avatar}`} />}
+                                            <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
+                                              {initials}
+                                            </AvatarFallback>
+                                          </Avatar>
+                                          <span className="text-xs text-foreground">{u.name}</span>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </PopoverContent>
+                              </Popover>
                             )}
                           </div>
                         )}

@@ -4,6 +4,7 @@ import { GripVertical, Pencil, Trash2, Calendar, Check } from 'lucide-react';
 import type { Task } from '@/types';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
 
@@ -77,7 +78,7 @@ export function TaskCard({ task, isOverlay, onEdit, onDelete, onView }: TaskCard
             <div className="flex items-center gap-1.5">
               {assignees.length > 0 && (
                 <div className="flex -space-x-1.5">
-                  {assignees.slice(0, 3).map((u) => {
+                  {assignees.slice(0, 2).map((u) => {
                     const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
                     return (
                       <UserHoverCard key={u.id} user={u}>
@@ -100,10 +101,36 @@ export function TaskCard({ task, isOverlay, onEdit, onDelete, onView }: TaskCard
                       </UserHoverCard>
                     );
                   })}
-                  {assignees.length > 3 && (
-                    <div className="flex h-6 w-6 items-center justify-center rounded-full bg-muted ring-2 ring-card text-[10px] font-bold text-muted-foreground">
-                      +{assignees.length - 3}
-                    </div>
+                  {assignees.length > 2 && (
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <button
+                          onClick={(e) => e.stopPropagation()}
+                          className="flex h-6 w-6 items-center justify-center rounded-full bg-muted ring-2 ring-card text-[10px] font-bold text-muted-foreground hover:bg-accent transition-colors cursor-pointer"
+                        >
+                          +{assignees.length - 2}
+                        </button>
+                      </PopoverTrigger>
+                      <PopoverContent align="end" className="w-48 p-2" onClick={(e) => e.stopPropagation()}>
+                        <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">All Assignees</p>
+                        <div className="space-y-1.5">
+                          {assignees.map((u) => {
+                            const initials = u.name?.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                            return (
+                              <div key={u.id} className="flex items-center gap-2 px-1">
+                                <Avatar className="h-6 w-6">
+                                  {u.avatar && <AvatarImage src={`/storage/${u.avatar}`} />}
+                                  <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
+                                    {initials}
+                                  </AvatarFallback>
+                                </Avatar>
+                                <span className="text-xs text-foreground">{u.name}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </PopoverContent>
+                    </Popover>
                   )}
                 </div>
               )}

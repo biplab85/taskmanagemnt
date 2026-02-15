@@ -10,7 +10,8 @@ import type { Task, ActivityLog, TaskStatus, TaskPriority } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarGroup } from '@/components/ui/avatar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/context/AuthContext';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -104,6 +105,7 @@ export function DashboardPage() {
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [users, setUsers] = useState<UserListItem[]>([]);
 
+  const [showFilterCard, setShowFilterCard] = useState(false);
   const activeCount = countActiveFilters(filters, !!isAdmin);
 
   // Fetch users list once (admin only)
@@ -237,13 +239,29 @@ export function DashboardPage() {
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Welcome Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Welcome back, {user?.name?.split(' ')[0]}</h1>
-        <p className="text-sm text-muted-foreground">Here&apos;s what&apos;s happening with your projects</p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold">Welcome back, {user?.name?.split(' ')[0]}</h1>
+          <p className="text-sm text-muted-foreground">Here&apos;s what&apos;s happening with your projects</p>
+        </div>
+        {isAdmin && (
+          <button
+            onClick={() => setShowFilterCard((v) => !v)}
+            className="relative p-2 rounded-lg hover:bg-accent transition-colors cursor-pointer"
+            title="Toggle filters"
+          >
+            <SlidersHorizontal className="h-5 w-5 text-muted-foreground" />
+            {activeCount > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[10px] font-bold text-white">
+                {activeCount}
+              </span>
+            )}
+          </button>
+        )}
       </div>
 
       {/* ========== ADVANCED FILTER BAR (Admin Only) ========== */}
-      {isAdmin && <Card className="border-0 shadow-md overflow-hidden">
+      {isAdmin && showFilterCard && <Card className="border-0 shadow-md overflow-hidden">
         {/* Top bar: Search + Filter toggle + Clear */}
         <div className="flex flex-wrap items-center gap-3 p-4">
           <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -572,11 +590,45 @@ export function DashboardPage() {
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="min-w-0">
                       <p className="truncate text-sm font-medium">{task.title}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {task.assignees && task.assignees.length > 0
-                          ? task.assignees.map((u) => u.name).join(', ')
-                          : 'Unassigned'}
-                      </p>
+                      {task.assignees && task.assignees.length > 0 ? (
+                        <div className="flex items-center gap-1 mt-0.5">
+                          <AvatarGroup>
+                            {task.assignees.slice(0, 2).map((u) => (
+                              <Avatar key={u.id} size="sm" title={u.name}>
+                                <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
+                                  {u.name?.charAt(0)}
+                                </AvatarFallback>
+                              </Avatar>
+                            ))}
+                          </AvatarGroup>
+                          {task.assignees.length > 2 && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <button className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-[10px] font-bold text-muted-foreground ring-2 ring-background hover:bg-accent transition-colors cursor-pointer -ml-2 z-10">
+                                  +{task.assignees.length - 2}
+                                </button>
+                              </PopoverTrigger>
+                              <PopoverContent align="start" className="w-48 p-2">
+                                <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">All Assignees</p>
+                                <div className="space-y-1.5">
+                                  {task.assignees.map((u) => (
+                                    <div key={u.id} className="flex items-center gap-2 px-1">
+                                      <Avatar size="sm">
+                                        <AvatarFallback className="bg-brand-100 text-brand-700 text-[10px] font-bold dark:bg-brand-900 dark:text-brand-300">
+                                          {u.name?.charAt(0)}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <span className="text-xs text-foreground">{u.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Unassigned</p>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
