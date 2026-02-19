@@ -7,14 +7,17 @@ use App\Models\ActivityLog;
 
 class ActivityLogController extends Controller
 {
-    public function index()
+    public function index(\Illuminate\Http\Request $request)
     {
-        $logs = ActivityLog::with(['user:id,name,email,avatar', 'task:id,title'])
-            ->orderBy('created_at', 'desc')
-            ->limit(100)
-            ->get();
+        $query = ActivityLog::with(['user:id,name,email,avatar', 'task:id,title'])
+            ->orderBy('created_at', 'desc');
 
-        return response()->json($logs);
+        if ($request->has('per_page')) {
+            $perPage = min((int) $request->per_page, 50);
+            return response()->json($query->paginate($perPage));
+        }
+
+        return response()->json($query->limit(100)->get());
     }
 
     public function forTask($taskId)

@@ -18,16 +18,20 @@ import { arrayMove } from '@dnd-kit/sortable';
 import { Plus, Search, Filter } from 'lucide-react';
 import api from '@/api/axios';
 import type { Task, TaskStatus, User, UserStatus } from '@/types';
-import { TASK_STATUSES, TASK_PRIORITIES } from '@/types';
+import { TASK_PRIORITIES } from '@/types';
 import { useAuth } from '@/context/AuthContext';
+import { useKanbanColumns } from '@/context/KanbanColumnsContext';
+import { KanbanSkeleton } from '@/components/shared/KanbanSkeleton';
 import { KanbanColumn } from './KanbanColumn';
 import { TaskCard } from './TaskCard';
 import { TaskModal } from './TaskModal';
 import { TaskDrawer } from './TaskDrawer';
-import { ListView } from './ListView';
-import { GridView } from './GridView';
-import { TableView } from './TableView';
-import { CalendarView } from './CalendarView';
+import dynamic from 'next/dynamic';
+
+const ListView = dynamic(() => import('./ListView').then((m) => ({ default: m.ListView })), { ssr: false });
+const GridView = dynamic(() => import('./GridView').then((m) => ({ default: m.GridView })), { ssr: false });
+const TableView = dynamic(() => import('./TableView').then((m) => ({ default: m.TableView })), { ssr: false });
+const CalendarView = dynamic(() => import('./CalendarView').then((m) => ({ default: m.CalendarView })), { ssr: false });
 import { ViewSwitcher, type ViewMode } from './ViewSwitcher';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,9 +43,14 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { toast } from 'sonner';
+import { KeyboardShortcuts } from '@/components/shared/KeyboardShortcuts';
+import { BulkActionBar } from '@/components/shared/BulkActionBar';
+import { useRef } from 'react';
 
 export function KanbanBoard() {
   const { onStatusChange } = useAuth();
+  const { columns } = useKanbanColumns();
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -60,6 +69,17 @@ export function KanbanBoard() {
   // Drawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTaskId, setDrawerTaskId] = useState<number | null>(null);
+
+  // Bulk selection
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<number>>(new Set());
+  const toggleTaskSelection = (id: number) => {
+    setSelectedTaskIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
@@ -114,19 +134,20 @@ export function KanbanBoard() {
     tasks.filter((t) => t.status === status).sort((a, b) => a.position - b.position);
 
   // DnD collision detection (board view only)
+  const columnSlugs = columns.map((c) => c.slug);
   const collisionDetection: CollisionDetection = useCallback((args) => {
     const pointerCollisions = pointerWithin(args);
     const intersections = rectIntersection(args);
 
     if (pointerCollisions.length > 0) {
       const columnCollision = pointerCollisions.find((c) =>
-        TASK_STATUSES.some((s) => s.value === c.id)
+        columnSlugs.includes(String(c.id))
       );
       if (columnCollision) {
         const taskCollisions = closestCenter({
           ...args,
           droppableContainers: args.droppableContainers.filter(
-            (c) => !TASK_STATUSES.some((s) => s.value === c.id)
+            (c) => !columnSlugs.includes(String(c.id))
           ),
         });
         if (taskCollisions.length > 0) return taskCollisions;
@@ -141,7 +162,7 @@ export function KanbanBoard() {
     }
 
     return closestCenter(args);
-  }, []);
+  }, [columnSlugs]);
 
   const handleDragStart = (event: DragStartEvent) => {
     const task = tasks.find((t) => t.id === Number(event.active.id));
@@ -160,7 +181,7 @@ export function KanbanBoard() {
 
     let targetStatus: TaskStatus | null = null;
 
-    if (TASK_STATUSES.some((s) => s.value === overId)) {
+    if (columnSlugs.includes(overId)) {
       targetStatus = overId as TaskStatus;
     } else {
       const overTask = tasks.find((t) => t.id === Number(overId));
@@ -189,7 +210,7 @@ export function KanbanBoard() {
     if (!activeTaskItem) return;
 
     let targetStatus = activeTaskItem.status;
-    if (TASK_STATUSES.some((s) => s.value === overId)) {
+    if (columnSlugs.includes(overId)) {
       targetStatus = overId as TaskStatus;
     } else {
       const overTask = tasks.find((t) => t.id === Number(overId));
@@ -249,14 +270,19 @@ export function KanbanBoard() {
       toast.error('Failed to delete task');
     }
   };
+  const handleDuplicateTask = async (taskId: number) => {
+    try {
+      await api.post(`/tasks/${taskId}/duplicate`);
+      toast.success('Task duplicated');
+      fetchTasks();
+    } catch {
+      toast.error('Failed to duplicate task');
+    }
+  };
   const handleTaskSaved = () => { setModalOpen(false); setEditingTask(null); fetchTasks(); };
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    );
+    return <KanbanSkeleton />;
   }
 
   // View descriptions for the page subtitle
@@ -275,6 +301,7 @@ export function KanbanBoard() {
         <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             placeholder="Search tasks..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
@@ -331,16 +358,19 @@ export function KanbanBoard() {
             onDragEnd={handleDragEnd}
           >
             <div className="flex gap-4 overflow-x-auto pb-4">
-              {TASK_STATUSES.map((status) => (
+              {columns.map((col) => (
                 <KanbanColumn
-                  key={status.value}
-                  status={status.value}
-                  label={status.label}
-                  color={status.color}
-                  tasks={getTasksByStatus(status.value)}
+                  key={col.slug}
+                  status={col.slug}
+                  label={col.label}
+                  color={col.color}
+                  tasks={getTasksByStatus(col.slug)}
                   onEditTask={handleEditTask}
                   onDeleteTask={handleDeleteTask}
                   onViewTask={handleViewTask}
+                  onDuplicateTask={handleDuplicateTask}
+                  selectedIds={selectedTaskIds}
+                  onToggleSelect={toggleTaskSelection}
                 />
               ))}
             </div>
@@ -402,6 +432,18 @@ export function KanbanBoard() {
         taskId={drawerTaskId}
         users={users}
         onTaskUpdated={fetchTasks}
+      />
+
+      <KeyboardShortcuts
+        onNewTask={() => { setEditingTask(null); setModalOpen(true); }}
+        onFocusSearch={() => searchInputRef.current?.focus()}
+        onViewChange={(v) => handleViewModeChange(v as ViewMode)}
+      />
+
+      <BulkActionBar
+        selectedIds={selectedTaskIds}
+        onClear={() => setSelectedTaskIds(new Set())}
+        onDone={fetchTasks}
       />
     </>
   );

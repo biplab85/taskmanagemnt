@@ -3,9 +3,12 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Task extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'title',
         'description',
@@ -49,5 +52,37 @@ class Task extends Model
     public function activityLogs()
     {
         return $this->hasMany(ActivityLog::class);
+    }
+
+    public function subtasks()
+    {
+        return $this->hasMany(Subtask::class)->orderBy('position');
+    }
+
+    public function labels()
+    {
+        return $this->belongsToMany(Label::class, 'task_label');
+    }
+
+    /** Tasks this task depends on (blocked by) */
+    public function dependencies()
+    {
+        return $this->belongsToMany(self::class, 'task_dependencies', 'task_id', 'depends_on_id');
+    }
+
+    /** Tasks that depend on this task (blocks) */
+    public function dependents()
+    {
+        return $this->belongsToMany(self::class, 'task_dependencies', 'depends_on_id', 'task_id');
+    }
+
+    public function watchers()
+    {
+        return $this->belongsToMany(User::class, 'task_watchers')->withTimestamps();
+    }
+
+    public function timeEntries()
+    {
+        return $this->hasMany(TimeEntry::class);
     }
 }

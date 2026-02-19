@@ -46,6 +46,24 @@ export interface User {
   updated_at?: string;
 }
 
+export interface Subtask {
+  id: number;
+  task_id: number;
+  title: string;
+  is_completed: boolean;
+  position: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Label {
+  id: number;
+  name: string;
+  color: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Task {
   id: number;
   title: string;
@@ -62,20 +80,34 @@ export interface Task {
   creator?: User;
   comments?: Comment[];
   attachments?: Attachment[];
+  subtasks?: Subtask[];
+  labels?: Label[];
+  dependencies?: { id: number; title: string; status: string }[];
+  dependents?: { id: number; title: string; status: string }[];
 }
 
-export type TaskStatus = 'backlog' | 'todo' | 'in_progress' | 'review' | 'complete';
+export type TaskStatus = string;
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
+
+export interface CommentReaction {
+  id: number;
+  comment_id: number;
+  user_id: number;
+  emoji: string;
+  user?: { id: number; name: string };
+}
 
 export interface Comment {
   id: number;
   task_id: number;
   user_id: number;
   body: string;
+  edited_at: string | null;
   created_at: string;
   updated_at: string;
   user?: User;
+  reactions?: CommentReaction[];
 }
 
 export interface Attachment {
@@ -111,6 +143,52 @@ export interface ActivityLog {
   created_at: string;
   user?: User;
   task?: { id: number; title: string };
+}
+
+export interface TimeEntry {
+  id: number;
+  task_id: number;
+  user_id: number;
+  description: string | null;
+  started_at: string;
+  stopped_at: string | null;
+  duration_minutes: number | null;
+  calculated_duration?: number;
+  user?: User;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface RecurringTask {
+  id: number;
+  title: string;
+  description: string | null;
+  status: string;
+  priority: TaskPriority;
+  created_by: number;
+  frequency: 'daily' | 'weekly' | 'monthly';
+  day_of_week: number | null;
+  day_of_month: number | null;
+  time_of_day: string;
+  next_run: string;
+  is_active: boolean;
+  assignee_ids: number[];
+  label_ids: number[];
+  creator?: User;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface TaskTemplate {
+  id: number;
+  name: string;
+  title_pattern: string | null;
+  description: string | null;
+  priority: TaskPriority;
+  created_by: number;
+  creator?: User;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface AuthResponse {

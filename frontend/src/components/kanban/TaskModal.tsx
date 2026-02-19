@@ -1,7 +1,8 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import api from '@/api/axios';
 import type { Task, User, Attachment, Comment } from '@/types';
-import { TASK_STATUSES, TASK_PRIORITIES } from '@/types';
+import { TASK_PRIORITIES } from '@/types';
+import { useKanbanColumns } from '@/context/KanbanColumnsContext';
 import {
   Dialog,
   DialogContent,
@@ -23,8 +24,17 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { FileUpload } from '@/components/shared/FileUpload';
 import { RichTextEditor } from '@/components/shared/RichTextEditor';
 import { MultiUserSelect } from '@/components/shared/MultiUserSelect';
-import { Trash2, Download, FileImage, FileText, File, ExternalLink, Send } from 'lucide-react';
+import { LabelSelect } from '@/components/shared/LabelSelect';
+import { Trash2, Download, FileImage, FileText, File, ExternalLink, Send, BookTemplate } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface TaskTemplate {
+  id: number;
+  name: string;
+  title_pattern: string | null;
+  description: string | null;
+  priority: string;
+}
 
 interface TaskModalProps {
   open: boolean;
@@ -47,6 +57,7 @@ function getFileIcon(mimeType: string) {
 }
 
 export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModalProps) {
+  const { columns } = useKanbanColumns();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [status, setStatus] = useState('backlog');
@@ -61,6 +72,23 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
   const [newComment, setNewComment] = useState('');
   const [sendingComment, setSendingComment] = useState(false);
   const [figmaLink, setFigmaLink] = useState('');
+  const [labelIds, setLabelIds] = useState<number[]>([]);
+  const [templates, setTemplates] = useState<TaskTemplate[]>([]);
+
+  // Load templates for new task
+  useEffect(() => {
+    if (!task && open) {
+      api.get<TaskTemplate[]>('/task-templates').then((res) => setTemplates(res.data)).catch(() => {});
+    }
+  }, [task, open]);
+
+  const applyTemplate = (templateId: string) => {
+    const t = templates.find((tpl) => tpl.id === Number(templateId));
+    if (!t) return;
+    if (t.title_pattern) setTitle(t.title_pattern);
+    if (t.description) setDescription(t.description);
+    setPriority(t.priority || 'medium');
+  };
 
   useEffect(() => {
     if (task) {
@@ -69,6 +97,7 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
       setStatus(task.status);
       setPriority(task.priority);
       setAssigneeIds(task.assignees?.map((u) => u.id) || []);
+      setLabelIds(task.labels?.map((l) => l.id) || []);
       setStartDate(task.start_date || '');
       setEndDate(task.end_date || '');
       api.get<Task>(`/tasks/${task.id}`).then((res) => {
@@ -81,6 +110,7 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
       setStatus('backlog');
       setPriority('medium');
       setAssigneeIds([]);
+      setLabelIds([]);
       setStartDate('');
       setEndDate('');
       setAttachments([]);
@@ -100,6 +130,7 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
       status,
       priority,
       assignees: assigneeIds,
+      labels: labelIds,
       start_date: startDate || null,
       end_date: endDate || null,
     };
@@ -187,6 +218,26 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
 
           <TabsContent value="details" className="mt-4">
             <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Template selector (new tasks only) */}
+              {!task && templates.length > 0 && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border border-dashed">
+                  <BookTemplate className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <span className="text-xs text-muted-foreground shrink-0">From template:</span>
+                  <Select onValueChange={applyTemplate}>
+                    <SelectTrigger className="h-7 flex-1 text-xs border-none bg-transparent">
+                      <SelectValue placeholder="Choose a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templates.map((t) => (
+                        <SelectItem key={t.id} value={String(t.id)} className="text-xs">
+                          {t.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
               <div className="space-y-2">
                 <Label htmlFor="title">Title</Label>
                 <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task title" required />
@@ -203,11 +254,11 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
                   <Select value={status} onValueChange={setStatus}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {TASK_STATUSES.map((s) => (
-                        <SelectItem key={s.value} value={s.value}>
+                      {columns.map((col) => (
+                        <SelectItem key={col.slug} value={col.slug}>
                           <span className="flex items-center gap-2">
-                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
-                            {s.label}
+                            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.color }} />
+                            {col.label}
                           </span>
                         </SelectItem>
                       ))}
@@ -236,6 +287,11 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
                 />
               </div>
 
+              <div className="space-y-2">
+                <Label>Labels</Label>
+                <LabelSelect selectedIds={labelIds} onChange={setLabelIds} />
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Start Date</Label>
@@ -247,11 +303,35 @@ export function TaskModal({ open, onOpenChange, task, users, onSaved }: TaskModa
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                <Button type="submit" className="bg-brand-600 hover:bg-brand-700" disabled={submitting}>
-                  {submitting ? 'Saving...' : task ? 'Update' : 'Create'}
+              <div className="flex items-center justify-between gap-2 pt-4">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="gap-1.5 text-xs text-muted-foreground"
+                  onClick={async () => {
+                    const name = prompt('Template name:');
+                    if (!name?.trim()) return;
+                    try {
+                      await api.post('/task-templates', {
+                        name: name.trim(),
+                        title_pattern: title || null,
+                        description: description || null,
+                        priority,
+                      });
+                      toast.success('Template saved');
+                    } catch { toast.error('Failed to save template'); }
+                  }}
+                >
+                  <BookTemplate className="h-3.5 w-3.5" />
+                  Save as template
                 </Button>
+                <div className="flex gap-2">
+                  <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                  <Button type="submit" className="bg-brand-600 hover:bg-brand-700" disabled={submitting}>
+                    {submitting ? 'Saving...' : task ? 'Update' : 'Create'}
+                  </Button>
+                </div>
               </div>
             </form>
           </TabsContent>

@@ -1,11 +1,10 @@
-import { useState, useEffect } from 'react';
 import { LogOut, Moon, Sun, Bell, UserCircle, Settings, Laptop, Coffee, Phone, Palmtree, WifiOff } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
 import { useTheme } from '@/context/ThemeContext';
-import api from '@/api/axios';
-import type { Notification, UserStatus } from '@/types';
+import { useNotifications } from '@/context/NotificationContext';
+import type { UserStatus } from '@/types';
 import { USER_STATUSES } from '@/types';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -30,50 +29,10 @@ const STATUS_ICONS: Record<UserStatus, typeof Laptop> = {
 export function Header() {
   const { user, logout, updateUserStatus } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { unreadCount, notifications, fetchNotifications, markAsRead, markAllRead } = useNotifications();
   const router = useRouter();
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
 
-  // Poll unread count every 15s
-  useEffect(() => {
-    const fetchCount = () => {
-      api.get<{ count: number }>('/notifications/unread-count')
-        .then((res) => setUnreadCount(res.data.count))
-        .catch(() => {});
-    };
-    fetchCount();
-    const interval = setInterval(fetchCount, 15000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchNotifications = async () => {
-    try {
-      const [notifRes, countRes] = await Promise.all([
-        api.get<Notification[]>('/notifications'),
-        api.get<{ count: number }>('/notifications/unread-count'),
-      ]);
-      setNotifications(notifRes.data);
-      setUnreadCount(countRes.data.count);
-    } catch { /* ignore */ }
-  };
-
-  const markAsRead = async (id: number) => {
-    try {
-      await api.put(`/notifications/${id}/read`);
-      setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, is_read: true } : n)));
-      setUnreadCount((c) => Math.max(0, c - 1));
-    } catch { /* ignore */ }
-  };
-
-  const markAllRead = async () => {
-    try {
-      await api.put('/notifications/read-all');
-      setUnreadCount(0);
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-    } catch { /* ignore */ }
-  };
-
-  const handleNotificationClick = async (n: Notification) => {
+  const handleNotificationClick = async (n: { id: number; is_read: boolean; task_id?: number | null }) => {
     if (!n.is_read) {
       await markAsRead(n.id);
     }

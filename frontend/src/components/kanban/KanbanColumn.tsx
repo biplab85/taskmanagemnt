@@ -1,19 +1,22 @@
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
-import type { Task, TaskStatus } from '@/types';
+import type { Task } from '@/types';
 import { TaskCard } from './TaskCard';
 
 interface KanbanColumnProps {
-  status: TaskStatus;
+  status: string;
   label: string;
   color: string;
   tasks: Task[];
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: number) => void;
   onViewTask: (taskId: number) => void;
+  onDuplicateTask?: (taskId: number) => void;
+  selectedIds?: Set<number>;
+  onToggleSelect?: (id: number) => void;
 }
 
-export function KanbanColumn({ status, label, color, tasks, onEditTask, onDeleteTask, onViewTask }: KanbanColumnProps) {
+export function KanbanColumn({ status, label, color, tasks, onEditTask, onDeleteTask, onViewTask, onDuplicateTask, selectedIds, onToggleSelect }: KanbanColumnProps) {
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
@@ -47,6 +50,9 @@ export function KanbanColumn({ status, label, color, tasks, onEditTask, onDelete
               onEdit={() => onEditTask(task)}
               onDelete={() => onDeleteTask(task.id)}
               onView={() => onViewTask(task.id)}
+              onDuplicate={onDuplicateTask ? () => onDuplicateTask(task.id) : undefined}
+              isSelected={selectedIds?.has(task.id)}
+              onToggleSelect={onToggleSelect ? () => onToggleSelect(task.id) : undefined}
             />
           ))}
         </div>

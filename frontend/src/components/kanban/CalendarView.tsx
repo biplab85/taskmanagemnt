@@ -1,8 +1,8 @@
 import { useState, useMemo } from 'react';
 import type { Task } from '@/types';
-import { TASK_STATUSES } from '@/types';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { useKanbanColumns } from '@/context/KanbanColumnsContext';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
@@ -16,11 +16,10 @@ interface CalendarViewProps {
 
 const DAY_NAMES = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-function getStatusColor(status: string): string {
-  return TASK_STATUSES.find((s) => s.value === status)?.color || '#6b7280';
-}
-
 export function CalendarView({ tasks, onView }: CalendarViewProps) {
+  const { columns, getColumn } = useKanbanColumns();
+
+  const getStatusColor = (status: string) => getColumn(status)?.color || '#6b7280';
   const [currentDate, setCurrentDate] = useState(() => new Date());
 
   const year = currentDate.getFullYear();
@@ -197,10 +196,10 @@ export function CalendarView({ tasks, onView }: CalendarViewProps) {
 
       {/* Legend */}
       <div className="flex flex-wrap items-center gap-4 mt-4 px-1">
-        {TASK_STATUSES.map((s) => (
-          <span key={s.value} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: s.color }} />
-            {s.label}
+        {columns.map((col) => (
+          <span key={col.slug} className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span className="h-2 w-2 rounded-full" style={{ backgroundColor: col.color }} />
+            {col.label}
           </span>
         ))}
       </div>

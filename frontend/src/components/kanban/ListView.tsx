@@ -1,6 +1,7 @@
 import type { Task } from '@/types';
-import { TASK_STATUSES } from '@/types';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
+import { useKanbanColumns } from '@/context/KanbanColumnsContext';
+import { sanitizeHtml } from '@/lib/sanitize';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
@@ -16,18 +17,20 @@ interface ListViewProps {
 }
 
 export function ListView({ tasks, onView, onEdit, onDelete }: ListViewProps) {
+  const { columns } = useKanbanColumns();
+
   return (
     <div className="space-y-6 animate-fade-in">
-      {TASK_STATUSES.map((statusDef) => {
+      {columns.map((col) => {
         const statusTasks = tasks
-          .filter((t) => t.status === statusDef.value)
+          .filter((t) => t.status === col.slug)
           .sort((a, b) => a.position - b.position);
 
         return (
-          <div key={statusDef.value}>
+          <div key={col.slug}>
             <div className="flex items-center gap-2.5 mb-3">
-              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: statusDef.color }} />
-              <h3 className="text-sm font-semibold">{statusDef.label}</h3>
+              <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: col.color }} />
+              <h3 className="text-sm font-semibold">{col.label}</h3>
               <span className="flex h-5 min-w-[20px] items-center justify-center rounded-full bg-muted px-1.5 text-xs font-semibold text-muted-foreground">
                 {statusTasks.length}
               </span>
@@ -56,7 +59,7 @@ export function ListView({ tasks, onView, onEdit, onDelete }: ListViewProps) {
                         </p>
                         {task.description && (
                           <p className="text-xs text-muted-foreground truncate mt-0.5" dangerouslySetInnerHTML={{
-                            __html: task.description.replace(/<[^>]*>/g, ' ').slice(0, 120)
+                            __html: sanitizeHtml(task.description).replace(/<[^>]*>/g, ' ').slice(0, 120)
                           }} />
                         )}
                       </button>

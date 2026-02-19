@@ -3,10 +3,11 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateUserRequest;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -19,20 +20,8 @@ class UserController extends Controller
         return response()->json($users);
     }
 
-    public function store(Request $request)
+    public function store(StoreUserRequest $request)
     {
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users',
-            'password' => 'required|string|min:6',
-            'role' => 'nullable|in:admin,user',
-            'can_view_all_tasks' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
-
         $user = User::create([
             'name' => $request->name,
             'email' => $request->email,
@@ -51,21 +40,9 @@ class UserController extends Controller
         return response()->json($user);
     }
 
-    public function update(Request $request, $id)
+    public function update(UpdateUserRequest $request, $id)
     {
         $user = User::findOrFail($id);
-
-        $validator = Validator::make($request->all(), [
-            'name' => 'sometimes|required|string|max:255',
-            'email' => 'sometimes|required|string|email|max:255|unique:users,email,' . $id,
-            'password' => 'nullable|string|min:6',
-            'role' => 'nullable|in:admin,user',
-            'can_view_all_tasks' => 'nullable|boolean',
-        ]);
-
-        if ($validator->fails()) {
-            return response()->json(['errors' => $validator->errors()], 422);
-        }
 
         $data = $request->only(['name', 'email', 'role', 'can_view_all_tasks']);
 
@@ -89,5 +66,43 @@ class UserController extends Controller
         $user->delete();
 
         return response()->json(['message' => 'User deleted successfully']);
+    }
+
+    /**
+     * Toggle user status between active and deactivated.
+     */
+    public function toggleActive($id)
+    {
+        $user = User::findOrFail($id);
+
+        if ($user->id === auth()->id()) {
+            return response()->json(['message' => 'Cannot deactivate your own account'], 403);
+        }
+
+        if ($user->deactivated_at) {
+            // Reactivate
+            $user->update([
+                'deactivated_at' => null,
+                'status' => 'active',
+            ]);
+
+            return response()->json([
+                'message' => 'User reactivated successfully',
+                'user' => $user,
+                'active' => true,
+            ]);
+        }
+
+        // Deactivate
+        $user->update([
+            'deactivated_at' => now(),
+            'status' => 'deactivated',
+        ]);
+
+        return response()->json([
+            'message' => 'User deactivated successfully',
+            'user' => $user,
+            'active' => false,
+        ]);
     }
 }

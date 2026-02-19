@@ -1,12 +1,33 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { GripVertical, Pencil, Trash2, Calendar, Check } from 'lucide-react';
+import { GripVertical, Pencil, Trash2, Calendar, Check, AlertTriangle, Copy } from 'lucide-react';
 import type { Task } from '@/types';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
+
+function getDueDateInfo(endDate: string | null, status: string) {
+  if (!endDate || status === 'complete') return null;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const due = new Date(endDate);
+  due.setHours(0, 0, 0, 0);
+  const diffDays = Math.ceil((due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  if (diffDays < 0) return { label: `${Math.abs(diffDays)}d overdue`, color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30', icon: true };
+  if (diffDays === 0) return { label: 'Due today', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/30', icon: true };
+  if (diffDays <= 2) return { label: `${diffDays}d left`, color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/30', icon: true };
+  return null;
+}
+
+function hexToRgba(hex: string, alpha: number): string {
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
 
 interface TaskCardProps {
   task: Task;
@@ -14,9 +35,12 @@ interface TaskCardProps {
   onEdit?: () => void;
   onDelete?: () => void;
   onView?: () => void;
+  onDuplicate?: () => void;
+  isSelected?: boolean;
+  onToggleSelect?: () => void;
 }
 
-export function TaskCard({ task, isOverlay, onEdit, onDelete, onView }: TaskCardProps) {
+export function TaskCard({ task, isOverlay, onEdit, onDelete, onView, onDuplicate, isSelected, onToggleSelect }: TaskCardProps) {
   const {
     attributes,
     listeners,
@@ -40,9 +64,21 @@ export function TaskCard({ task, isOverlay, onEdit, onDelete, onView }: TaskCard
       style={style}
       className={`group animate-scale-in rounded-xl border bg-card p-3 shadow-sm transition-all duration-200 hover:shadow-md dark:border-border/50 ${
         isOverlay ? 'rotate-3 shadow-xl ring-2 ring-brand-500/50' : ''
-      } ${isDragging ? 'z-50' : ''}`}
+      } ${isDragging ? 'z-50' : ''} ${isSelected ? 'ring-2 ring-brand-500 border-brand-500/50' : ''}`}
     >
       <div className="flex items-start gap-2">
+        {onToggleSelect && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+            className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-all ${
+              isSelected
+                ? 'border-brand-600 bg-brand-600 text-white'
+                : 'border-muted-foreground/30 opacity-0 group-hover:opacity-100'
+            }`}
+          >
+            {isSelected && <Check className="h-3 w-3" />}
+          </button>
+        )}
         <button
           {...attributes}
           {...listeners}
@@ -62,16 +98,52 @@ export function TaskCard({ task, isOverlay, onEdit, onDelete, onView }: TaskCard
 
           {task.description && (
             <p className="line-clamp-2 text-xs text-muted-foreground" dangerouslySetInnerHTML={{
-              __html: task.description.replace(/<[^>]*>/g, ' ').slice(0, 100)
+              __html: sanitizeHtml(task.description).replace(/<[^>]*>/g, ' ').slice(0, 100)
             }} />
           )}
 
-          {task.end_date && (
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Calendar className="h-3 w-3" />
-              <span className="text-[11px]">{new Date(task.end_date).toLocaleDateString()}</span>
+          {/* Labels */}
+          {task.labels && task.labels.length > 0 && (
+            <div className="flex flex-wrap gap-1">
+              {task.labels.map((label) => (
+                <span
+                  key={label.id}
+                  className="inline-flex items-center rounded-full px-1.5 py-px text-[10px] font-medium"
+                  style={{ backgroundColor: hexToRgba(label.color, 0.2), color: label.color }}
+                >
+                  {label.name}
+                </span>
+              ))}
             </div>
           )}
+
+          {/* Subtask progress */}
+          {task.subtasks && task.subtasks.length > 0 && (
+            <div className="flex items-center gap-1.5">
+              <div className="h-1 flex-1 rounded-full bg-muted">
+                <div
+                  className="h-1 rounded-full bg-brand-600 transition-all"
+                  style={{ width: `${Math.round((task.subtasks.filter(s => s.is_completed).length / task.subtasks.length) * 100)}%` }}
+                />
+              </div>
+              <span className="text-[10px] text-muted-foreground">
+                {task.subtasks.filter(s => s.is_completed).length}/{task.subtasks.length}
+              </span>
+            </div>
+          )}
+
+          {/* Due date with warning indicators */}
+          {task.end_date && (() => {
+            const dueDateInfo = getDueDateInfo(task.end_date, task.status);
+            return (
+              <div className={`flex items-center gap-1 ${dueDateInfo ? dueDateInfo.color : 'text-muted-foreground'}`}>
+                {dueDateInfo?.icon ? <AlertTriangle className="h-3 w-3" /> : <Calendar className="h-3 w-3" />}
+                <span className="text-[11px]">
+                  {dueDateInfo ? dueDateInfo.label : new Date(task.end_date).toLocaleDateString()}
+                </span>
+              </div>
+            );
+          })()}
 
           <div className="flex items-center justify-between pt-1">
             <PriorityBadge priority={task.priority} />
@@ -135,6 +207,15 @@ export function TaskCard({ task, isOverlay, onEdit, onDelete, onView }: TaskCard
                 </div>
               )}
               <div className="hidden items-center gap-0.5 group-hover:flex">
+                {onDuplicate && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onDuplicate(); }}
+                    className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-blue-600 cursor-pointer"
+                    title="Duplicate"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                )}
                 {onEdit && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onEdit(); }}

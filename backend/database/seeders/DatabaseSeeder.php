@@ -96,12 +96,16 @@ class DatabaseSeeder extends Seeder
                 'description' => $taskData['description'],
                 'status' => $taskData['status'],
                 'priority' => $taskData['priority'],
-                'assigned_to' => $allUserIds[$i % count($allUserIds)],
                 'created_by' => $admin->id,
                 'position' => $taskData['position'],
                 'start_date' => now()->subDays(rand(1, 30))->format('Y-m-d'),
                 'end_date' => now()->addDays(rand(1, 30))->format('Y-m-d'),
             ]);
+
+            // Assign 1-3 users to each task via pivot table
+            $assigneeCount = rand(1, 3);
+            $assigneeIds = collect($allUserIds)->shuffle()->take($assigneeCount)->toArray();
+            $task->assignees()->sync($assigneeIds);
 
             // Add comments to some tasks
             if ($i % 3 === 0) {

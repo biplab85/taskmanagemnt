@@ -37,7 +37,10 @@ export function LoginPage() {
     try {
       await login(email, password);
     } catch (err: unknown) {
-      const message = (err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Login failed';
+      const resp = (err as { response?: { status?: number; data?: { message?: string } } })?.response;
+      const message = resp?.status === 429
+        ? 'Too many login attempts. Please wait a minute and try again.'
+        : resp?.data?.message || 'Login failed';
       setError(message);
     } finally {
       setSubmitting(false);

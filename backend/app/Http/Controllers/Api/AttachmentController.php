@@ -46,6 +46,12 @@ class AttachmentController extends Controller
     {
         $attachment = Attachment::findOrFail($id);
 
+        // Authorization: admin or the uploader
+        $user = auth()->user();
+        if ($user->role !== 'admin' && $attachment->user_id !== $user->id) {
+            return response()->json(['message' => 'You are not authorized to delete this attachment'], 403);
+        }
+
         Storage::disk('public')->delete($attachment->file_path);
 
         $attachment->delete();

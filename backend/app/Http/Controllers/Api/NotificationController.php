@@ -23,11 +23,14 @@ class NotificationController extends Controller
             $query->where('type', $request->type);
         }
 
-        $notifications = $query->orderBy('created_at', 'desc')
-            ->limit(100)
-            ->get();
+        $query->orderBy('created_at', 'desc');
 
-        return response()->json($notifications);
+        if ($request->has('per_page')) {
+            $perPage = min((int) $request->per_page, 50);
+            return response()->json($query->paginate($perPage));
+        }
+
+        return response()->json($query->limit(100)->get());
     }
 
     public function unreadCount()

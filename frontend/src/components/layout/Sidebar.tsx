@@ -1,16 +1,18 @@
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Columns3, Users, UserCircle, Settings, Inbox, AlertCircle, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
+import { LayoutDashboard, Columns3, Users, UserCircle, Settings, Inbox, AlertCircle, PanelLeftClose, PanelLeftOpen, BarChart3, Archive } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useSettings } from '@/context/SettingsContext';
 import { useSidebar } from '@/context/SidebarContext';
-import api from '@/api/axios';
+import { useNotifications } from '@/context/NotificationContext';
 
 const navItems = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/inbox', label: 'Inbox', icon: Inbox, showBadge: true },
   { to: '/kanban', label: 'Kanban Board', icon: Columns3 },
+  { to: '/reports', label: 'Reports', icon: BarChart3 },
+  { to: '/archive', label: 'Archive', icon: Archive },
   { to: '/profile', label: 'Profile', icon: UserCircle },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
@@ -23,20 +25,9 @@ export function Sidebar() {
   const { isAdmin, needsProfileCompletion, user } = useAuth();
   const { settings } = useSettings();
   const { isCollapsed, toggleSidebar } = useSidebar();
+  const { unreadCount } = useNotifications();
   const pathname = usePathname();
   const router = useRouter();
-  const [unreadCount, setUnreadCount] = useState(0);
-
-  useEffect(() => {
-    const fetchCount = () => {
-      api.get<{ count: number }>('/notifications/unread-count')
-        .then((res) => setUnreadCount(res.data.count))
-        .catch(() => {});
-    };
-    fetchCount();
-    const interval = setInterval(fetchCount, 15000);
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <aside className={`sidebar-wrapper fixed left-0 top-0 z-40 flex h-screen flex-col bg-sidebar-bg text-sidebar-foreground transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
@@ -45,7 +36,7 @@ export function Sidebar() {
         {isCollapsed ? (
           <span className="text-2xl font-bold">{(settings.logoText || 'S').charAt(0)}</span>
         ) : settings.logoUrl ? (
-          <img src={settings.logoUrl} alt={settings.projectName} className="w-full object-contain" />
+          <Image src={settings.logoUrl} alt={settings.projectName} width={200} height={40} className="w-full object-contain" unoptimized />
         ) : (
           <span className="text-2xl font-bold tracking-tight">{settings.logoText || 'SKLENTR'}</span>
         )}

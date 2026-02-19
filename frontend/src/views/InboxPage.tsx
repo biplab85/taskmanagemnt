@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import api from '@/api/axios';
-import type { Notification, User } from '@/types';
+import type { User } from '@/types';
+import { useNotifications } from '@/context/NotificationContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -81,116 +82,71 @@ function getDateGroup(dateStr: string): string {
 type FilterTab = 'all' | 'unread' | 'read';
 
 export function InboxPage() {
-  const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [loading, setLoading] = useState(true);
+  const {
+    notifications,
+    unreadCount,
+    loading: notifLoading,
+    fetchNotifications,
+    markAsRead,
+    markAsUnread,
+    markAllRead,
+    deleteNotification,
+    clearRead,
+  } = useNotifications();
+
   const [refreshing, setRefreshing] = useState(false);
   const [filter, setFilter] = useState<FilterTab>('all');
   const [typeFilter, setTypeFilter] = useState('all');
-  const [unreadCount, setUnreadCount] = useState(0);
   const [users, setUsers] = useState<User[]>([]);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const loading = notifLoading && notifications.length === 0;
 
   // TaskDrawer state
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerTaskId, setDrawerTaskId] = useState<number | null>(null);
 
-  const fetchNotifications = useCallback(async (showRefresh = false) => {
-    if (showRefresh) setRefreshing(true);
-    try {
-      const params: Record<string, string> = {};
-      if (filter !== 'all') params.filter = filter;
-      if (typeFilter !== 'all') params.type = typeFilter;
-
-      const [notifRes, countRes] = await Promise.all([
-        api.get<Notification[]>('/notifications', { params }),
-        api.get<{ count: number }>('/notifications/unread-count'),
-      ]);
-      setNotifications(notifRes.data);
-      setUnreadCount(countRes.data.count);
-    } catch {
-      if (showRefresh) toast.error('Failed to refresh');
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  }, [filter, typeFilter]);
-
+  // Fetch full notifications on mount
   useEffect(() => {
-    setLoading(true);
     fetchNotifications();
   }, [fetchNotifications]);
 
-  // Auto-refresh every 15s
-  useEffect(() => {
-    intervalRef.current = setInterval(() => fetchNotifications(), 15000);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [fetchNotifications]);
-
-  // Fetch users for TaskDrawer (uses /users-list for all roles)
+  // Fetch users for TaskDrawer
   useEffect(() => {
     api.get<User[]>('/users-list').then((res) => setUsers(res.data)).catch(() => {});
   }, []);
 
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    try { await fetchNotifications(); }
+    catch { toast.error('Failed to refresh'); }
+    finally { setRefreshing(false); }
+  };
+
   const handleMarkAsRead = async (id: number) => {
-    try {
-      await api.put(`/notifications/${id}/read`);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: true } : n))
-      );
-      setUnreadCount((c) => Math.max(0, c - 1));
-    } catch {
-      toast.error('Failed to mark as read');
-    }
+    try { await markAsRead(id); }
+    catch { toast.error('Failed to mark as read'); }
   };
 
   const handleMarkAsUnread = async (id: number) => {
-    try {
-      await api.put(`/notifications/${id}/unread`);
-      setNotifications((prev) =>
-        prev.map((n) => (n.id === id ? { ...n, is_read: false } : n))
-      );
-      setUnreadCount((c) => c + 1);
-    } catch {
-      toast.error('Failed to mark as unread');
-    }
+    try { await markAsUnread(id); }
+    catch { toast.error('Failed to mark as unread'); }
   };
 
   const handleMarkAllRead = async () => {
-    try {
-      await api.put('/notifications/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, is_read: true })));
-      setUnreadCount(0);
-      toast.success('All marked as read');
-    } catch {
-      toast.error('Failed to mark all as read');
-    }
+    try { await markAllRead(); toast.success('All marked as read'); }
+    catch { toast.error('Failed to mark all as read'); }
   };
 
   const handleDelete = async (id: number) => {
-    try {
-      await api.delete(`/notifications/${id}`);
-      const removed = notifications.find((n) => n.id === id);
-      setNotifications((prev) => prev.filter((n) => n.id !== id));
-      if (removed && !removed.is_read) setUnreadCount((c) => Math.max(0, c - 1));
-      toast.success('Notification deleted');
-    } catch {
-      toast.error('Failed to delete');
-    }
+    try { await deleteNotification(id); toast.success('Notification deleted'); }
+    catch { toast.error('Failed to delete'); }
   };
 
   const handleClearRead = async () => {
-    try {
-      await api.delete('/notifications/clear-read');
-      setNotifications((prev) => prev.filter((n) => !n.is_read));
-      toast.success('Read notifications cleared');
-    } catch {
-      toast.error('Failed to clear');
-    }
+    try { await clearRead(); toast.success('Read notifications cleared'); }
+    catch { toast.error('Failed to clear'); }
   };
 
-  const handleNotificationClick = async (n: Notification) => {
+  const handleNotificationClick = async (n: { id: number; is_read: boolean; task_id?: number | null }) => {
     if (!n.is_read) {
       await handleMarkAsRead(n.id);
     }
@@ -200,9 +156,17 @@ export function InboxPage() {
     }
   };
 
+  // Apply client-side filters
+  const filteredNotifications = notifications.filter((n) => {
+    if (filter === 'unread' && n.is_read) return false;
+    if (filter === 'read' && !n.is_read) return false;
+    if (typeFilter !== 'all' && n.type !== typeFilter) return false;
+    return true;
+  });
+
   // Group notifications by date
-  const grouped: Record<string, Notification[]> = {};
-  for (const n of notifications) {
+  const grouped: Record<string, typeof filteredNotifications> = {};
+  for (const n of filteredNotifications) {
     const group = getDateGroup(n.created_at);
     if (!grouped[group]) grouped[group] = [];
     grouped[group].push(n);
@@ -230,7 +194,7 @@ export function InboxPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => fetchNotifications(true)}
+            onClick={handleRefresh}
             disabled={refreshing}
             className="gap-1.5 text-xs text-muted-foreground"
           >
@@ -304,7 +268,7 @@ export function InboxPage() {
         <div className="flex flex-col items-center justify-center py-20">
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
         </div>
-      ) : notifications.length === 0 ? (
+      ) : filteredNotifications.length === 0 ? (
         <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed bg-card/50 py-20">
           <p className="mb-3 text-4xl">&#127881;</p>
           <h3 className="text-lg font-semibold">Inbox Zero</h3>
@@ -413,7 +377,7 @@ export function InboxPage() {
         onOpenChange={setDrawerOpen}
         taskId={drawerTaskId}
         users={users}
-        onTaskUpdated={() => fetchNotifications()}
+        onTaskUpdated={fetchNotifications}
       />
     </div>
   );

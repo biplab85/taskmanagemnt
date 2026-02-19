@@ -1,6 +1,10 @@
 import { useState, useRef } from 'react';
 import { useSettings } from '@/context/SettingsContext';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { KanbanColumnsSettings } from '@/components/settings/KanbanColumnsSettings';
+import { RecurringTasksManager } from '@/components/settings/RecurringTasksManager';
+import { TaskTemplatesManager } from '@/components/settings/TaskTemplatesManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,6 +15,8 @@ import { toast } from 'sonner';
 export function SettingsPage() {
   const { settings, updateSettings, resetSettings, fontOptions, colorPresets } = useSettings();
   const { theme, toggleTheme } = useTheme();
+  const { user } = useAuth();
+  const isAdmin = user?.role === 'admin';
   const [customColor, setCustomColor] = useState(settings.brandColor);
   const [logoText, setLogoText] = useState(settings.logoText);
   const [projectName, setProjectName] = useState(settings.projectName);
@@ -205,6 +211,15 @@ export function SettingsPage() {
           </p>
         </CardContent>
       </Card>
+
+      {/* Kanban Columns (Admin Only) */}
+      {isAdmin && <KanbanColumnsSettings />}
+
+      {/* Recurring Tasks (Admin Only) */}
+      {isAdmin && <RecurringTasksManager />}
+
+      {/* Task Templates (Admin Only) */}
+      {isAdmin && <TaskTemplatesManager />}
 
       {/* Theme Color */}
       <Card className="border-0 shadow-md">

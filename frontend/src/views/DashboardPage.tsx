@@ -6,13 +6,15 @@ import {
   ChevronDown, ArrowUpDown,
 } from 'lucide-react';
 import api from '@/api/axios';
-import type { Task, ActivityLog, TaskStatus, TaskPriority } from '@/types';
+import type { Task, ActivityLog, TaskPriority } from '@/types';
+import { useKanbanColumns } from '@/context/KanbanColumnsContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { Avatar, AvatarFallback, AvatarGroup } from '@/components/ui/avatar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { useAuth } from '@/context/AuthContext';
+import { DashboardSkeleton } from '@/components/shared/DashboardSkeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -31,13 +33,7 @@ const TIME_RANGES = [
   { value: 'custom', label: 'Custom', days: -1 },
 ];
 
-const STATUS_OPTIONS: { value: TaskStatus; label: string; color: string; dotClass: string }[] = [
-  { value: 'backlog', label: 'Backlog', color: 'gray', dotClass: 'bg-gray-400' },
-  { value: 'todo', label: 'To Do', color: 'blue', dotClass: 'bg-blue-500' },
-  { value: 'in_progress', label: 'In Progress', color: 'amber', dotClass: 'bg-amber-500' },
-  { value: 'review', label: 'Review', color: 'purple', dotClass: 'bg-purple-500' },
-  { value: 'complete', label: 'Complete', color: 'emerald', dotClass: 'bg-emerald-500' },
-];
+// STATUS_OPTIONS removed - now driven by useKanbanColumns()
 
 const PRIORITY_OPTIONS: { value: TaskPriority; label: string; dotClass: string }[] = [
   { value: 'low', label: 'Low', dotClass: 'bg-slate-400' },
@@ -46,13 +42,7 @@ const PRIORITY_OPTIONS: { value: TaskPriority; label: string; dotClass: string }
   { value: 'urgent', label: 'Urgent', dotClass: 'bg-red-500' },
 ];
 
-const statusConfig = {
-  backlog: { label: 'Backlog', className: 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' },
-  todo: { label: 'To Do', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-  in_progress: { label: 'In Progress', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-  review: { label: 'Review', className: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400' },
-  complete: { label: 'Complete', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
-} as const;
+// statusConfig removed - now driven by useKanbanColumns()
 
 interface UserListItem {
   id: number;
@@ -63,7 +53,7 @@ interface Filters {
   timeRange: string;
   dateFrom: string;
   dateTo: string;
-  statuses: TaskStatus[];
+  statuses: string[];
   priorities: TaskPriority[];
   assignedTo: string;
   search: string;
@@ -95,6 +85,7 @@ function countActiveFilters(f: Filters, isAdmin: boolean): number {
 export function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { columns, getColumn } = useKanbanColumns();
   const isAdmin = user?.role === 'admin';
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -187,7 +178,7 @@ export function DashboardPage() {
     setFilters((prev) => ({ ...prev, [key]: value }));
   };
 
-  const toggleStatus = (s: TaskStatus) => {
+  const toggleStatus = (s: string) => {
     setFilters((prev) => ({
       ...prev,
       statuses: prev.statuses.includes(s)
@@ -229,11 +220,7 @@ export function DashboardPage() {
     .slice(0, 8);
 
   if (loading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-brand-600 border-t-transparent" />
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   return (
@@ -315,7 +302,7 @@ export function DashboardPage() {
             )}
             {filters.statuses.length > 0 && (
               <FilterPill
-                label={`Status: ${filters.statuses.map((s) => STATUS_OPTIONS.find((o) => o.value === s)?.label).join(', ')}`}
+                label={`Status: ${filters.statuses.map((s) => getColumn(s)?.label || s).join(', ')}`}
                 onRemove={() => setFilter('statuses', [])}
               />
             )}
@@ -402,20 +389,20 @@ export function DashboardPage() {
                   Status
                 </label>
                 <div className="flex flex-wrap gap-1.5">
-                  {STATUS_OPTIONS.map((s) => {
-                    const active = filters.statuses.includes(s.value);
+                  {columns.map((col) => {
+                    const active = filters.statuses.includes(col.slug);
                     return (
                       <button
-                        key={s.value}
-                        onClick={() => toggleStatus(s.value)}
+                        key={col.slug}
+                        onClick={() => toggleStatus(col.slug)}
                         className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all cursor-pointer ${
                           active
                             ? 'bg-brand-600 text-white shadow-md shadow-brand-600/25'
                             : 'bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground'
                         }`}
                       >
-                        <span className={`h-2 w-2 rounded-full ${active ? 'bg-white/80' : s.dotClass}`} />
-                        {s.label}
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: active ? 'rgba(255,255,255,0.8)' : col.color }} />
+                        {col.label}
                       </button>
                     );
                   })}
@@ -633,9 +620,22 @@ export function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-2 shrink-0">
                     <PriorityBadge priority={task.priority} />
-                    <Badge variant="secondary" className={statusConfig[task.status].className}>
-                      {statusConfig[task.status].label}
-                    </Badge>
+                    {(() => {
+                      const col = getColumn(task.status);
+                      const color = col?.color || '#6b7280';
+                      return (
+                        <Badge
+                          variant="secondary"
+                          style={{
+                            backgroundColor: color + '20',
+                            color: color,
+                            borderColor: color + '40',
+                          }}
+                        >
+                          {col?.label || task.status}
+                        </Badge>
+                      );
+                    })()}
                   </div>
                 </div>
               ))}

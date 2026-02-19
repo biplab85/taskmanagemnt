@@ -1,6 +1,7 @@
 import type { Task } from '@/types';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
@@ -60,7 +61,7 @@ export function TableView({ tasks, onView, onEdit, onDelete }: TableViewProps) {
                     </p>
                     {task.description && (
                       <p className="text-xs text-muted-foreground truncate max-w-[300px] mt-0.5" dangerouslySetInnerHTML={{
-                        __html: task.description.replace(/<[^>]*>/g, ' ').slice(0, 80)
+                        __html: sanitizeHtml(task.description).replace(/<[^>]*>/g, ' ').slice(0, 80)
                       }} />
                     )}
                   </button>
@@ -157,8 +158,11 @@ export function TableView({ tasks, onView, onEdit, onDelete }: TableViewProps) {
           })}
           {sorted.length === 0 && (
             <TableRow>
-              <TableCell colSpan={7} className="h-32 text-center text-sm text-muted-foreground">
-                No tasks found
+              <TableCell colSpan={7} className="h-32 text-center">
+                <div className="flex flex-col items-center justify-center gap-1 py-4">
+                  <p className="text-sm font-medium text-foreground/70">No tasks found</p>
+                  <p className="text-xs text-muted-foreground">Adjust filters or create a new task</p>
+                </div>
               </TableCell>
             </TableRow>
           )}

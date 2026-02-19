@@ -1,11 +1,13 @@
 import type { Task } from '@/types';
 import { PriorityBadge } from '@/components/shared/PriorityBadge';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { sanitizeHtml } from '@/lib/sanitize';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
 import { UserHoverCard } from '@/components/shared/UserHoverCard';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Calendar, Pencil, Trash2, Check } from 'lucide-react';
+import { Calendar, Pencil, Trash2, Check, ClipboardList } from 'lucide-react';
+import { EmptyState } from '@/components/shared/EmptyState';
 
 interface GridViewProps {
   tasks: Task[];
@@ -67,7 +69,7 @@ export function GridView({ tasks, onView, onEdit, onDelete }: GridViewProps) {
               {/* Description */}
               {task.description && (
                 <p className="text-xs text-muted-foreground line-clamp-2 mb-3" dangerouslySetInnerHTML={{
-                  __html: task.description.replace(/<[^>]*>/g, ' ').slice(0, 100)
+                  __html: sanitizeHtml(task.description).replace(/<[^>]*>/g, ' ').slice(0, 100)
                 }} />
               )}
 
@@ -148,8 +150,13 @@ export function GridView({ tasks, onView, onEdit, onDelete }: GridViewProps) {
       })}
 
       {sorted.length === 0 && (
-        <div className="col-span-full flex h-40 items-center justify-center rounded-xl border-2 border-dashed text-sm text-muted-foreground">
-          No tasks found
+        <div className="col-span-full">
+          <EmptyState
+            icon={ClipboardList}
+            title="No tasks found"
+            description="Try adjusting your filters or create a new task to get started."
+            compact
+          />
         </div>
       )}
     </div>

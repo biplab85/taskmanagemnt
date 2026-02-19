@@ -40,6 +40,7 @@ class User extends Authenticatable implements JWTSubject
         'cv_path',
         'skills',
         'profile_completed',
+        'deactivated_at',
     ];
 
     protected $hidden = [
@@ -56,6 +57,7 @@ class User extends Authenticatable implements JWTSubject
             'profile_completed' => 'boolean',
             'same_as_permanent' => 'boolean',
             'password_changed' => 'boolean',
+            'deactivated_at' => 'datetime',
         ];
     }
 
