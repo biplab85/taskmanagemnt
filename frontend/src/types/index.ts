@@ -11,6 +11,15 @@ export interface Education {
   updated_at?: string;
 }
 
+export interface UserCurrentLeave {
+  id: number;
+  type: string;
+  slug: string;
+  start_date: string;
+  end_date: string;
+  is_half_day: boolean;
+}
+
 export interface User {
   id: number;
   name: string;
@@ -19,6 +28,8 @@ export interface User {
   can_view_all_tasks: boolean;
   avatar: string | null;
   status: UserStatus;
+  is_on_leave?: boolean;
+  current_leave?: UserCurrentLeave | null;
   phone?: string | null;
   phone2?: string | null;
   department?: string | null;
@@ -131,7 +142,25 @@ export interface Notification {
   type: string;
   is_read: boolean;
   created_at: string;
+  deleted_at?: string | null;
   task?: { id: number; title: string; status: string } | null;
+}
+
+export interface Message {
+  id: number;
+  sender_id: number;
+  recipient_id: number;
+  subject: string;
+  body: string;
+  attachment_path: string | null;
+  attachment_name: string | null;
+  is_read: boolean;
+  deleted_by_sender: boolean;
+  deleted_by_recipient: boolean;
+  created_at: string;
+  updated_at: string;
+  sender?: User;
+  recipient?: User;
 }
 
 export interface ActivityLog {
@@ -190,6 +219,183 @@ export interface TaskTemplate {
   created_at: string;
   updated_at: string;
 }
+
+export type LeaveStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface LeaveType {
+  id: number;
+  name: string;
+  slug: string;
+  max_days: number;
+  is_paid: boolean;
+  carry_forward: boolean;
+  is_active: boolean;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface LeaveRequest {
+  id: number;
+  user_id: number;
+  leave_type_id: number;
+  start_date: string;
+  end_date: string;
+  total_days: number;
+  is_half_day: boolean;
+  half_day_period: 'first_half' | 'second_half' | null;
+  reason: string;
+  status: LeaveStatus;
+  attachment: string | null;
+  admin_comment: string | null;
+  approved_by: number | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
+  user?: User;
+  leave_type?: LeaveType;
+  approver?: User;
+}
+
+export interface LeaveBalance {
+  id: number;
+  user_id: number;
+  leave_type_id: number;
+  year: number;
+  total_days: number;
+  used_days: number;
+  carried_forward: number;
+  remaining_days: number;
+  leave_type?: LeaveType;
+}
+
+export interface Holiday {
+  id: number;
+  name: string;
+  date: string;
+  is_recurring: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export const LEAVE_STATUSES: { value: LeaveStatus; label: string; color: string }[] = [
+  { value: 'pending', label: 'Pending', color: '#f59e0b' },
+  { value: 'approved', label: 'Approved', color: '#10b981' },
+  { value: 'rejected', label: 'Rejected', color: '#ef4444' },
+  { value: 'cancelled', label: 'Cancelled', color: '#6b7280' },
+];
+
+// Invoice System Types
+export type InvoiceStatus = 'draft' | 'sent' | 'paid' | 'unpaid' | 'overdue' | 'cancelled';
+export type PaymentMethod = 'cash' | 'bank_transfer' | 'mobile_banking';
+export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+
+export interface Client {
+  id: number;
+  name: string;
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  created_by: number | null;
+  invoices_count?: number;
+  creator?: User;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceItem {
+  id?: number;
+  invoice_id?: number;
+  name: string;
+  description: string | null;
+  quantity: number;
+  rate: number;
+  tax: number;
+  discount: number;
+  subtotal: number;
+}
+
+export interface Invoice {
+  id: number;
+  invoice_number: string;
+  client_id: number;
+  invoice_date: string;
+  due_date: string;
+  status: InvoiceStatus;
+  subtotal: number;
+  tax_amount: number;
+  discount_amount: number;
+  total_amount: number;
+  notes: string | null;
+  created_by: number | null;
+  total_paid?: number;
+  balance_due?: number;
+  client?: Client;
+  items?: InvoiceItem[];
+  payments?: Payment[];
+  creator?: User;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payment {
+  id: number;
+  invoice_id: number;
+  payment_method: PaymentMethod;
+  payment_date: string;
+  transaction_id: string | null;
+  amount: number;
+  status: PaymentStatus;
+  invoice?: Invoice;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface InvoiceSetting {
+  id: number;
+  company_name: string | null;
+  company_logo: string | null;
+  currency: string;
+  tax_percentage: number;
+  invoice_prefix: string;
+  footer_note: string | null;
+}
+
+export interface InvoiceDashboardStats {
+  total_invoices: number;
+  paid_invoices: number;
+  unpaid_invoices: number;
+  overdue_invoices: number;
+  draft_invoices: number;
+  total_revenue: number;
+  total_outstanding: number;
+  monthly_revenue: Record<number, number>;
+  yearly_revenue: { year: number; revenue: number }[];
+  recent_invoices: Invoice[];
+}
+
+export const INVOICE_STATUSES: { value: InvoiceStatus; label: string; color: string }[] = [
+  { value: 'draft', label: 'Draft', color: '#6b7280' },
+  { value: 'sent', label: 'Sent', color: '#3b82f6' },
+  { value: 'paid', label: 'Paid', color: '#10b981' },
+  { value: 'unpaid', label: 'Unpaid', color: '#f59e0b' },
+  { value: 'overdue', label: 'Overdue', color: '#ef4444' },
+  { value: 'cancelled', label: 'Cancelled', color: '#6b7280' },
+];
+
+export const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'bank_transfer', label: 'Bank Transfer' },
+  { value: 'mobile_banking', label: 'Mobile Banking' },
+];
+
+export const PAYMENT_STATUSES: { value: PaymentStatus; label: string; color: string }[] = [
+  { value: 'pending', label: 'Pending', color: '#f59e0b' },
+  { value: 'paid', label: 'Paid', color: '#10b981' },
+  { value: 'failed', label: 'Failed', color: '#ef4444' },
+  { value: 'refunded', label: 'Refunded', color: '#8b5cf6' },
+];
 
 export interface AuthResponse {
   access_token: string;

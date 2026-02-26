@@ -11,6 +11,8 @@ class User extends Authenticatable implements JWTSubject
 {
     use HasFactory, Notifiable;
 
+    protected $appends = ['is_on_leave', 'current_leave'];
+
     protected $fillable = [
         'name',
         'email',
@@ -106,9 +108,82 @@ class User extends Authenticatable implements JWTSubject
         return $this->hasMany(ActivityLog::class);
     }
 
+    public function sentMessages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
+    public function receivedMessages()
+    {
+        return $this->hasMany(Message::class, 'recipient_id');
+    }
+
     public function educations()
     {
         return $this->hasMany(Education::class);
+    }
+
+    public function leaves()
+    {
+        return $this->hasMany(Leave::class);
+    }
+
+    public function leaveBalances()
+    {
+        return $this->hasMany(LeaveBalance::class);
+    }
+
+    public function clients()
+    {
+        return $this->hasMany(Client::class, 'created_by');
+    }
+
+    public function invoices()
+    {
+        return $this->hasMany(Invoice::class, 'created_by');
+    }
+
+    /**
+     * The currently active approved leave (covers today).
+     */
+    public function activeLeave()
+    {
+        return $this->hasOne(Leave::class)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', now()->toDateString())
+            ->whereDate('end_date', '>=', now()->toDateString())
+            ->latest('start_date');
+    }
+
+    public function getIsOnLeaveAttribute(): bool
+    {
+        if ($this->relationLoaded('activeLeave')) {
+            return $this->activeLeave !== null;
+        }
+
+        return $this->activeLeave()->exists();
+    }
+
+    public function getCurrentLeaveAttribute(): ?array
+    {
+        $leave = $this->relationLoaded('activeLeave')
+            ? $this->activeLeave
+            : $this->activeLeave()->with('leaveType')->first();
+
+        if (!$leave) return null;
+
+        if (!$leave->relationLoaded('leaveType')) {
+            $leave->load('leaveType');
+        }
+
+        return [
+            'id' => $leave->id,
+            'type' => $leave->leaveType?->name,
+            'slug' => $leave->leaveType?->slug,
+            'start_date' => $leave->start_date->toDateString(),
+            'end_date' => $leave->end_date->toDateString(),
+            'is_half_day' => $leave->is_half_day,
+        ];
     }
 
     public function getProfileCompletionAttribute(): int

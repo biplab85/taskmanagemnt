@@ -16,6 +16,18 @@ use App\Http\Controllers\Api\RecurringTaskController;
 use App\Http\Controllers\Api\TaskWatcherController;
 use App\Http\Controllers\Api\TimeEntryController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\LeaveTypeController;
+use App\Http\Controllers\Api\LeaveController;
+use App\Http\Controllers\Api\LeaveBalanceController;
+use App\Http\Controllers\Api\HolidayController;
+use App\Http\Controllers\Api\LeaveReportController;
+use App\Http\Controllers\Api\MessageController;
+use App\Http\Controllers\Api\ClientController;
+use App\Http\Controllers\Api\InvoiceController;
+use App\Http\Controllers\Api\PaymentController;
+use App\Http\Controllers\Api\InvoiceReportController;
+use App\Http\Controllers\Api\InvoiceSettingController;
+use App\Http\Controllers\Api\InvoicePdfController;
 use Illuminate\Support\Facades\Route;
 
 // Public routes (registration removed - admin creates users)
@@ -118,16 +130,41 @@ Route::middleware('auth:api')->group(function () {
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+    Route::get('/notifications/trash', [NotificationController::class, 'trash']);
     Route::put('/notifications/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::post('/notifications/bulk-read', [NotificationController::class, 'bulkMarkRead']);
+    Route::post('/notifications/bulk-unread', [NotificationController::class, 'bulkMarkUnread']);
+    Route::post('/notifications/bulk-delete', [NotificationController::class, 'bulkDelete']);
     Route::delete('/notifications/clear-read', [NotificationController::class, 'destroyAll']);
+    Route::post('/notifications/{id}/restore', [NotificationController::class, 'restore']);
+    Route::delete('/notifications/{id}/force', [NotificationController::class, 'forceDestroy']);
     Route::put('/notifications/{id}/read', [NotificationController::class, 'markAsRead']);
     Route::put('/notifications/{id}/unread', [NotificationController::class, 'markAsUnread']);
     Route::delete('/notifications/{id}', [NotificationController::class, 'destroy']);
 
+    // Messages
+    Route::get('/messages/inbox', [MessageController::class, 'inbox']);
+    Route::get('/messages/sent', [MessageController::class, 'sent']);
+    Route::get('/messages/trash', [MessageController::class, 'trash']);
+    Route::get('/messages/unread-count', [MessageController::class, 'unreadCount']);
+    Route::post('/messages', [MessageController::class, 'store']);
+    Route::post('/messages/bulk-read', [MessageController::class, 'bulkMarkRead']);
+    Route::post('/messages/bulk-unread', [MessageController::class, 'bulkMarkUnread']);
+    Route::post('/messages/bulk-delete', [MessageController::class, 'bulkDelete']);
+    Route::get('/messages/{id}', [MessageController::class, 'show']);
+    Route::put('/messages/{id}/read', [MessageController::class, 'markAsRead']);
+    Route::put('/messages/{id}/unread', [MessageController::class, 'markAsUnread']);
+    Route::delete('/messages/{id}', [MessageController::class, 'destroy']);
+    Route::post('/messages/{id}/restore', [MessageController::class, 'restore']);
+    Route::delete('/messages/{id}/force', [MessageController::class, 'forceDestroy']);
+
     // Users list (all authenticated users can fetch basic user info)
     Route::get('/users-list', function () {
         return response()->json(
-            \App\Models\User::select('id', 'name', 'email', 'avatar', 'status', 'profile_completed')->orderBy('name')->get()
+            \App\Models\User::select('id', 'name', 'email', 'avatar', 'status', 'profile_completed')
+                ->with('activeLeave.leaveType')
+                ->orderBy('name')
+                ->get()
         );
     });
 
@@ -137,6 +174,48 @@ Route::middleware('auth:api')->group(function () {
     // Activity Logs
     Route::get('/activity-logs', [ActivityLogController::class, 'index']);
     Route::get('/tasks/{taskId}/activity-logs', [ActivityLogController::class, 'forTask']);
+
+    // Leave Module
+    Route::get('/leave-types', [LeaveTypeController::class, 'index']);
+    Route::get('/leaves', [LeaveController::class, 'index']);
+    Route::post('/leaves', [LeaveController::class, 'store']);
+    Route::post('/leaves/{id}/cancel', [LeaveController::class, 'cancel']);
+    Route::get('/leave-balances', [LeaveBalanceController::class, 'index']);
+    Route::get('/leave-calendar', [LeaveController::class, 'calendar']);
+    Route::get('/leave-conflicts', [LeaveController::class, 'conflicts']);
+    Route::get('/leave-reports/stats', [LeaveReportController::class, 'stats']);
+    Route::get('/holidays', [HolidayController::class, 'index']);
+
+    // Clients
+    Route::get('/clients', [ClientController::class, 'index']);
+    Route::post('/clients', [ClientController::class, 'store']);
+    Route::get('/clients/{id}', [ClientController::class, 'show']);
+    Route::put('/clients/{id}', [ClientController::class, 'update']);
+    Route::delete('/clients/{id}', [ClientController::class, 'destroy']);
+    Route::get('/clients/{id}/invoices', [ClientController::class, 'invoiceHistory']);
+
+    // Invoices
+    Route::get('/invoices', [InvoiceController::class, 'index']);
+    Route::post('/invoices', [InvoiceController::class, 'store']);
+    Route::get('/invoices/{id}', [InvoiceController::class, 'show']);
+    Route::put('/invoices/{id}', [InvoiceController::class, 'update']);
+    Route::delete('/invoices/{id}', [InvoiceController::class, 'destroy']);
+    Route::put('/invoices/{id}/status', [InvoiceController::class, 'updateStatus']);
+    Route::post('/invoices/{id}/duplicate', [InvoiceController::class, 'duplicate']);
+    Route::get('/invoices/{id}/pdf', [InvoicePdfController::class, 'download']);
+    Route::get('/invoices/{id}/pdf/stream', [InvoicePdfController::class, 'stream']);
+
+    // Payments
+    Route::get('/payments', [PaymentController::class, 'index']);
+    Route::post('/payments', [PaymentController::class, 'store']);
+    Route::get('/payments/{id}', [PaymentController::class, 'show']);
+    Route::put('/payments/{id}', [PaymentController::class, 'update']);
+
+    // Invoice Reports
+    Route::get('/invoice-reports/dashboard', [InvoiceReportController::class, 'dashboard']);
+
+    // Invoice Settings
+    Route::get('/invoice-settings', [InvoiceSettingController::class, 'show']);
 
     // Admin: User Management & Kanban Columns
     Route::middleware('admin')->group(function () {
@@ -153,5 +232,22 @@ Route::middleware('auth:api')->group(function () {
         Route::delete('/users/{id}', [UserController::class, 'destroy']);
         Route::post('/users/{id}/impersonate', [AuthController::class, 'impersonate']);
         Route::post('/users/{id}/toggle-active', [UserController::class, 'toggleActive']);
+
+        // Leave Admin
+        Route::post('/leave-types', [LeaveTypeController::class, 'store']);
+        Route::put('/leave-types/{id}', [LeaveTypeController::class, 'update']);
+        Route::delete('/leave-types/{id}', [LeaveTypeController::class, 'destroy']);
+        Route::post('/leaves/{id}/status', [LeaveController::class, 'updateStatus']);
+        Route::post('/leave-balances', [LeaveBalanceController::class, 'update']);
+        Route::post('/leave-balances/initialize', [LeaveBalanceController::class, 'initializeYear']);
+        Route::post('/holidays', [HolidayController::class, 'store']);
+        Route::put('/holidays/{id}', [HolidayController::class, 'update']);
+        Route::delete('/holidays/{id}', [HolidayController::class, 'destroy']);
+        Route::get('/leave-reports/users', [LeaveReportController::class, 'userReport']);
+        Route::get('/leave-reports/departments', [LeaveReportController::class, 'departmentReport']);
+        Route::get('/leave-reports/export-csv', [LeaveReportController::class, 'exportCsv']);
+
+        // Invoice Settings (admin only for mutations)
+        Route::put('/invoice-settings', [InvoiceSettingController::class, 'update']);
     });
 });
