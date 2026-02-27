@@ -25,7 +25,7 @@ class TaskController extends Controller
         $includes = collect(explode(',', $request->query('include', '')))
             ->intersect(['comments', 'attachments', 'subtasks', 'labels', 'dependencies'])
             ->toArray();
-        $defaultIncludes = ['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'creator:id,name,email,avatar'];
+        $defaultIncludes = ['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'assignees.activeLeave.leaveType', 'creator:id,name,email,avatar'];
         $query = Task::with(array_merge($defaultIncludes, $includes));
 
         if (!$user->isAdmin() && !$user->can_view_all_tasks) {
@@ -107,7 +107,7 @@ class TaskController extends Controller
             $task->labels()->sync($request->labels ?? []);
         }
 
-        $task->load(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'creator:id,name,email,avatar', 'labels', 'subtasks']);
+        $task->load(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'assignees.activeLeave.leaveType', 'creator:id,name,email,avatar', 'labels', 'subtasks']);
 
         // Activity log
         ActivityLog::create([
@@ -152,6 +152,7 @@ class TaskController extends Controller
     {
         $task = Task::with([
             'assignees:id,name,email,avatar,status,phone,department,location,profile_completed',
+            'assignees.activeLeave.leaveType',
             'creator:id,name,email,avatar',
             'comments.user:id,name,email,avatar',
             'comments.reactions.user:id,name',
@@ -194,7 +195,7 @@ class TaskController extends Controller
             $task->labels()->sync($request->labels ?? []);
         }
 
-        $task->load(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'creator:id,name,email,avatar', 'labels', 'subtasks']);
+        $task->load(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'assignees.activeLeave.leaveType', 'creator:id,name,email,avatar', 'labels', 'subtasks']);
 
         $currentUserId = auth()->id();
         $currentUserName = auth()->user()->name;
@@ -385,7 +386,7 @@ class TaskController extends Controller
         $newTask->assignees()->sync($task->assignees->pluck('id'));
         $newTask->labels()->sync($task->labels->pluck('id'));
 
-        $newTask->load(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'creator:id,name,email,avatar', 'labels', 'subtasks']);
+        $newTask->load(['assignees:id,name,email,avatar,status,phone,department,location,profile_completed', 'assignees.activeLeave.leaveType', 'creator:id,name,email,avatar', 'labels', 'subtasks']);
 
         ActivityLog::create([
             'user_id' => auth()->id(),

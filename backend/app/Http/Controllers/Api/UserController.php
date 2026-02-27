@@ -14,6 +14,7 @@ class UserController extends Controller
     public function index()
     {
         $users = User::select('id', 'name', 'email', 'role', 'can_view_all_tasks', 'avatar', 'status', 'phone', 'department', 'location', 'profile_completed', 'created_at')
+            ->with('activeLeave.leaveType')
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -35,7 +36,7 @@ class UserController extends Controller
 
     public function show($id)
     {
-        $user = User::findOrFail($id);
+        $user = User::with('activeLeave.leaveType')->findOrFail($id);
 
         return response()->json($user);
     }

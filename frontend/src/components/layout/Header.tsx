@@ -1,4 +1,4 @@
-import { LogOut, Moon, Sun, Bell, UserCircle, Settings, Laptop, Coffee, Phone, Palmtree, WifiOff } from 'lucide-react';
+import { LogOut, Moon, Sun, Bell, UserCircle, Settings, Laptop, Coffee, Phone, Palmtree, WifiOff, TreePalm } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/context/AuthContext';
@@ -56,6 +56,20 @@ export function Header() {
       <div />
 
       <div className="flex items-center gap-2">
+        {/* On-leave badge */}
+        {user?.is_on_leave && (
+          <div className="flex items-center gap-2 rounded-xl bg-orange-50 dark:bg-orange-950/30 px-3 py-1.5">
+            <TreePalm className="h-4 w-4 text-orange-500" />
+            <span className="text-sm font-semibold text-orange-700 dark:text-orange-400">On Leave</span>
+            {user.current_leave && (
+              <span className="hidden sm:inline text-xs text-orange-600/70 dark:text-orange-400/60">
+                ({user.current_leave.type})
+              </span>
+            )}
+            <span className="h-2 w-2 rounded-full bg-orange-500 animate-pulse" />
+          </div>
+        )}
+
         {/* Status dropdown */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -173,7 +187,7 @@ export function Header() {
                   {initials}
                 </AvatarFallback>
               </Avatar>
-              {user?.status && <UserStatusDot status={user.status} className="absolute -bottom-0.5 -right-0.5 ring-2 ring-card" />}
+              {user?.status && <UserStatusDot status={user.status} isOnLeave={user?.is_on_leave} className="absolute -bottom-0.5 -right-0.5 ring-2 ring-card" />}
             </div>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-52">

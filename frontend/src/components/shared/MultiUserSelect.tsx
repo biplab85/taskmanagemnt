@@ -110,6 +110,7 @@ export function MultiUserSelect({ users, selectedIds, onChange, disabled }: Mult
                   {u.status && (
                     <UserStatusDot
                       status={u.status}
+                      isOnLeave={u.is_on_leave}
                       className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-background"
                     />
                   )}

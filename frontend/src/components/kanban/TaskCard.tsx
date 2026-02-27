@@ -162,7 +162,7 @@ export function TaskCard({ task, isOverlay, onEdit, onDelete, onView, onDuplicat
                             </AvatarFallback>
                           </Avatar>
                           {u.status && (
-                            <UserStatusDot status={u.status} className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-card" />
+                            <UserStatusDot status={u.status} isOnLeave={u.is_on_leave} className="absolute -bottom-px -right-px h-2 w-2 ring-1 ring-card" />
                           )}
                           {u.profile_completed && (
                             <span className="absolute -top-px -left-px flex h-3 w-3 items-center justify-center rounded-full bg-emerald-500 text-white ring-1 ring-card" title="Profile Complete">

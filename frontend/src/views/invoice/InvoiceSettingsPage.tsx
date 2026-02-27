@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/api/axios';
 import { InvoiceSetting } from '@/types';
 import { useAuth } from '@/context/AuthContext';
@@ -11,13 +11,20 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Settings, Building2, DollarSign, FileText, Save } from 'lucide-react';
+import { Settings, Building2, DollarSign, FileText, Save, Upload, X, Image } from 'lucide-react';
+
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
 
 export function InvoiceSettingsPage() {
   const { user } = useAuth();
   const isAdmin = user?.role === 'admin';
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [existingLogo, setExistingLogo] = useState<string | null>(null);
+  const [removeLogo, setRemoveLogo] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [form, setForm] = useState({
     company_name: '',
     currency: 'USD',
@@ -36,6 +43,9 @@ export function InvoiceSettingsPage() {
         invoice_prefix: s.invoice_prefix || 'INV-',
         footer_note: s.footer_note || '',
       });
+      if (s.company_logo) {
+        setExistingLogo(`${API_BASE}/storage/${s.company_logo}`);
+      }
       setLoading(false);
     }).catch(() => {
       toast.error('Failed to load settings');
@@ -43,17 +53,56 @@ export function InvoiceSettingsPage() {
     });
   }, []);
 
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Logo must be under 2MB');
+      return;
+    }
+    setLogoFile(file);
+    setRemoveLogo(false);
+    const reader = new FileReader();
+    reader.onload = () => setLogoPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoFile(null);
+    setLogoPreview(null);
+    setRemoveLogo(true);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
-      await api.put('/invoice-settings', {
-        company_name: form.company_name || null,
-        currency: form.currency,
-        tax_percentage: Number(form.tax_percentage),
-        invoice_prefix: form.invoice_prefix,
-        footer_note: form.footer_note || null,
+      const formData = new FormData();
+      formData.append('company_name', form.company_name || '');
+      formData.append('currency', form.currency);
+      formData.append('tax_percentage', form.tax_percentage);
+      formData.append('invoice_prefix', form.invoice_prefix);
+      formData.append('footer_note', form.footer_note || '');
+      if (logoFile) {
+        formData.append('company_logo', logoFile);
+      }
+      if (removeLogo) {
+        formData.append('remove_logo', '1');
+      }
+      formData.append('_method', 'PUT');
+
+      await api.post('/invoice-settings', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
       toast.success('Invoice settings saved');
+      if (logoFile) {
+        setExistingLogo(logoPreview);
+        setLogoFile(null);
+      }
+      if (removeLogo) {
+        setExistingLogo(null);
+        setRemoveLogo(false);
+      }
     } catch {
       toast.error('Failed to save settings');
     } finally {
@@ -93,6 +142,59 @@ export function InvoiceSettingsPage() {
               placeholder="Your Company Name"
               disabled={!isAdmin}
             />
+          </div>
+
+          {/* Company Logo */}
+          <div className="space-y-2">
+            <Label>Company Logo</Label>
+            <p className="text-xs text-muted-foreground">Appears on invoice headers. Max 2MB (JPG, PNG, SVG).</p>
+            <div className="flex items-start gap-4">
+              {(logoPreview || (existingLogo && !removeLogo)) && (
+                <div className="relative group shrink-0">
+                  <div className="h-20 w-20 rounded-lg border bg-white flex items-center justify-center overflow-hidden p-1.5">
+                    <img
+                      src={logoPreview || existingLogo!}
+                      alt="Company logo"
+                      className="max-h-full max-w-full object-contain"
+                    />
+                  </div>
+                  {isAdmin && (
+                    <button
+                      onClick={handleRemoveLogo}
+                      className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              )}
+              {isAdmin && (
+                <div>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/svg+xml"
+                    onChange={handleLogoSelect}
+                    className="hidden"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="cursor-pointer gap-1.5"
+                  >
+                    <Upload className="h-3.5 w-3.5" />
+                    {existingLogo && !removeLogo ? 'Change Logo' : 'Upload Logo'}
+                  </Button>
+                </div>
+              )}
+              {!isAdmin && !existingLogo && (
+                <div className="flex items-center gap-2 text-muted-foreground text-sm h-20">
+                  <Image className="h-5 w-5" /> No logo uploaded
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

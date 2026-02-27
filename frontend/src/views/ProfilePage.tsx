@@ -573,7 +573,7 @@ export function ProfilePage() {
                 <Camera className="h-6 w-6 text-white" />
                 <input type="file" accept="image/*" onChange={handleAvatarUpload} className="hidden" disabled={uploading} />
               </label>
-              <UserStatusDot status={status} className="absolute bottom-1 right-1 h-4 w-4 ring-3 ring-white/30" />
+              <UserStatusDot status={status} isOnLeave={user?.is_on_leave} className="absolute bottom-1 right-1 h-4 w-4 ring-3 ring-white/30" />
               {profileCompletion >= 100 && (
                 <div className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500 text-white shadow-lg ring-2 ring-white/30">
                   <Check className="h-3.5 w-3.5" strokeWidth={3} />

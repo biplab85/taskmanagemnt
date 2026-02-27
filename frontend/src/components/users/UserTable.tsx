@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Pencil, Trash2, Laptop, Coffee, Phone, Palmtree, WifiOff, MoreVertical, LogIn, CheckCircle2 } from 'lucide-react';
+import { Pencil, Trash2, Laptop, Coffee, Phone, Palmtree, WifiOff, MoreVertical, LogIn, CheckCircle2, TreePalm } from 'lucide-react';
 import type { User, UserStatus } from '@/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -95,7 +95,7 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                           {user.avatar && <AvatarImage src={`/storage/${user.avatar}`} />}
                           <AvatarFallback className="bg-brand-100 text-brand-700 text-xs font-bold dark:bg-brand-900 dark:text-brand-300">{initials}</AvatarFallback>
                         </Avatar>
-                        {user.status && <UserStatusDot status={user.status} className="absolute -bottom-px -right-px h-2.5 w-2.5 ring-2 ring-card" />}
+                        {user.status && <UserStatusDot status={user.status} isOnLeave={user.is_on_leave} className="absolute -bottom-px -right-px h-2.5 w-2.5 ring-2 ring-card" />}
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="font-medium">{user.name}</span>
@@ -112,10 +112,24 @@ export function UserTable({ users, onEdit, onDelete }: UserTableProps) {
                     </Badge>
                   </TableCell>
                   <TableCell>
-                    <span className="flex items-center gap-1.5 text-sm capitalize text-muted-foreground">
-                      <StatusIcon className="h-3.5 w-3.5" style={{ color: (() => { const colors: Record<string, string> = { working: '#10b981', busy: '#ef4444', in_meeting: '#f59e0b', vacation: '#8b5cf6', offline: '#6b7280' }; return colors[user.status || 'offline']; })() }} />
-                      {(user.status || 'offline').replace('_', ' ')}
-                    </span>
+                    {user.is_on_leave ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="flex items-center gap-1.5 rounded-full bg-orange-100 dark:bg-orange-950/40 px-2.5 py-1 text-xs font-semibold text-orange-700 dark:text-orange-400">
+                          <TreePalm className="h-3.5 w-3.5" />
+                          On Leave
+                        </span>
+                        {user.current_leave && (
+                          <span className="text-[11px] text-muted-foreground">
+                            {user.current_leave.type}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-sm capitalize text-muted-foreground">
+                        <StatusIcon className="h-3.5 w-3.5" style={{ color: (() => { const colors: Record<string, string> = { working: '#10b981', busy: '#ef4444', in_meeting: '#f59e0b', vacation: '#8b5cf6', offline: '#6b7280' }; return colors[user.status || 'offline']; })() }} />
+                        {(user.status || 'offline').replace('_', ' ')}
+                      </span>
+                    )}
                   </TableCell>
                   <TableCell className="text-muted-foreground">{new Date(user.created_at).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">

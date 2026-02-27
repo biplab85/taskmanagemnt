@@ -7,12 +7,30 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'DejaVu Sans', Arial, sans-serif; font-size: 12px; color: #1a1a2e; line-height: 1.5; }
 
-        .invoice-wrapper { padding: 40px; }
+        .invoice-wrapper { padding: 40px; position: relative; }
+
+        /* Watermark */
+        .watermark {
+            position: fixed;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%) rotate(-35deg);
+            font-size: 80px;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 8px;
+            opacity: 0.04;
+            color: #4f46e5;
+            z-index: 0;
+            pointer-events: none;
+            white-space: nowrap;
+        }
 
         /* Header */
         .header { display: table; width: 100%; margin-bottom: 40px; }
         .header-left { display: table-cell; width: 60%; vertical-align: top; }
         .header-right { display: table-cell; width: 40%; vertical-align: top; text-align: right; }
+        .company-logo { max-height: 60px; max-width: 180px; margin-bottom: 8px; }
         .company-name { font-size: 22px; font-weight: bold; color: #1a1a2e; margin-bottom: 4px; }
         .invoice-title { font-size: 28px; font-weight: bold; color: #4f46e5; letter-spacing: 1px; }
         .invoice-number { font-size: 14px; color: #64748b; margin-top: 4px; }
@@ -91,21 +109,42 @@
         .notes-title { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 6px; }
         .notes-text { font-size: 11px; color: #475569; }
 
+        /* QR Code Section */
+        .qr-section { display: table; width: 100%; margin-bottom: 30px; }
+        .qr-code-block { display: table-cell; width: 120px; vertical-align: top; }
+        .qr-code-block img { width: 100px; height: 100px; }
+        .qr-info-block { display: table-cell; vertical-align: middle; padding-left: 16px; }
+        .qr-info-title { font-size: 10px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 4px; }
+        .qr-info-text { font-size: 10px; color: #64748b; line-height: 1.6; }
+
         /* Footer */
         .footer {
             border-top: 1px solid #e2e8f0;
             padding-top: 16px;
-            text-align: center;
+            display: table;
+            width: 100%;
             font-size: 10px;
             color: #94a3b8;
         }
+        .footer-left { display: table-cell; text-align: left; vertical-align: top; color: #475569; }
+        .footer-right { display: table-cell; text-align: right; vertical-align: top; }
     </style>
 </head>
 <body>
+    {{-- Watermark --}}
+    @if($settings->company_name)
+    <div class="watermark">
+        {{ strtoupper($settings->company_name) }}
+    </div>
+    @endif
+
     <div class="invoice-wrapper">
         {{-- Header --}}
         <div class="header">
             <div class="header-left">
+                @if(!empty($logoBase64))
+                    <img src="{{ $logoBase64 }}" class="company-logo" alt="Company Logo">
+                @endif
                 @if($settings->company_name)
                     <div class="company-name">{{ $settings->company_name }}</div>
                 @endif
@@ -211,12 +250,32 @@
         </div>
         @endif
 
+        {{-- QR Code --}}
+        @if(!empty($qrCodeBase64))
+        <div class="qr-section">
+            <div class="qr-code-block">
+                <img src="{{ $qrCodeBase64 }}" alt="QR Code">
+            </div>
+            <div class="qr-info-block">
+                <div class="qr-info-title">Scan QR Code</div>
+                <div class="qr-info-text">
+                    Scan this code with your phone to view invoice details,<br>
+                    client information, and payment summary.
+                </div>
+            </div>
+        </div>
+        @endif
+
         {{-- Footer --}}
         <div class="footer">
-            @if($settings->footer_note)
-                <p style="margin-bottom: 8px; color: #475569;">{{ $settings->footer_note }}</p>
-            @endif
-            <p>Generated on {{ now()->format('M d, Y \a\t h:i A') }}</p>
+            <div class="footer-left">
+                @if($settings->footer_note)
+                    {{ $settings->footer_note }}
+                @endif
+            </div>
+            <div class="footer-right">
+                Generated on {{ now()->format('M d, Y \a\t h:i A') }}
+            </div>
         </div>
     </div>
 </body>

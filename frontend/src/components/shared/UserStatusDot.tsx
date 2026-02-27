@@ -9,7 +9,23 @@ const statusColors: Record<UserStatus, string> = {
   offline: 'bg-gray-400',
 };
 
-export function UserStatusDot({ status, className = '' }: { status: UserStatus; className?: string }) {
+interface UserStatusDotProps {
+  status: UserStatus;
+  isOnLeave?: boolean;
+  className?: string;
+}
+
+export function UserStatusDot({ status, isOnLeave, className = '' }: UserStatusDotProps) {
+  if (isOnLeave) {
+    return (
+      <span
+        className={`block rounded-full bg-orange-500 animate-pulse ${className}`}
+        style={{ minHeight: '0.625rem', minWidth: '0.625rem' }}
+        title="On Leave"
+      />
+    );
+  }
+
   return (
     <span
       className={`block h-2.5 w-2.5 rounded-full ${statusColors[status]} ${className}`}

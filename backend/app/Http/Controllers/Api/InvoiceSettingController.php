@@ -19,8 +19,17 @@ class InvoiceSettingController extends Controller
         $settings = InvoiceSetting::getSettings();
 
         if ($request->hasFile('company_logo')) {
+            // Delete old logo if exists
+            if ($settings->company_logo && \Storage::disk('public')->exists($settings->company_logo)) {
+                \Storage::disk('public')->delete($settings->company_logo);
+            }
             $path = $request->file('company_logo')->store('invoice-logos', 'public');
             $settings->company_logo = $path;
+        } elseif ($request->boolean('remove_logo')) {
+            if ($settings->company_logo && \Storage::disk('public')->exists($settings->company_logo)) {
+                \Storage::disk('public')->delete($settings->company_logo);
+            }
+            $settings->company_logo = null;
         }
 
         $settings->update($request->only([

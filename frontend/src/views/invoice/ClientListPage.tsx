@@ -13,7 +13,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { toast } from 'sonner';
-import { Plus, Search, MoreHorizontal, Pencil, Trash2, Building2, Mail, Phone, FileText } from 'lucide-react';
+import { Plus, Search, MoreHorizontal, Pencil, Trash2, Building2, Mail, Phone, FileText, MapPin } from 'lucide-react';
 
 const emptyForm = { name: '', company_name: '', email: '', phone: '', address: '' };
 
@@ -171,6 +171,12 @@ export function ClientListPage() {
                   {client.phone && (
                     <div className="flex items-center gap-2">
                       <Phone className="h-3.5 w-3.5" /> {client.phone}
+                    </div>
+                  )}
+                  {client.address && (
+                    <div className="flex items-start gap-2">
+                      <MapPin className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+                      <span className="line-clamp-2">{client.address}</span>
                     </div>
                   )}
                   <div className="flex items-center gap-2 pt-1">

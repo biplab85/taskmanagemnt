@@ -4,7 +4,7 @@ import { USER_STATUSES } from '@/types';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { UserStatusDot } from '@/components/shared/UserStatusDot';
-import { Mail, Phone, MapPin, Building2, CheckCircle2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Building2, CheckCircle2, Palmtree } from 'lucide-react';
 
 interface UserHoverCardProps {
   user: User;
@@ -44,6 +44,7 @@ export function UserHoverCard({ user, children }: UserHoverCardProps) {
             {user.status && (
               <UserStatusDot
                 status={user.status}
+                isOnLeave={user.is_on_leave}
                 className="absolute bottom-0 right-0 h-3.5 w-3.5 ring-[3px] ring-popover"
               />
             )}
@@ -65,7 +66,24 @@ export function UserHoverCard({ user, children }: UserHoverCardProps) {
                 Admin
               </span>
             )}
-            {statusInfo && (
+
+            {/* On Leave badge */}
+            {user.is_on_leave && user.current_leave ? (
+              <div className="mt-1.5 flex items-center gap-1.5 rounded-md bg-orange-50 dark:bg-orange-950/30 px-2 py-1">
+                <Palmtree className="h-3.5 w-3.5 text-orange-500" />
+                <div className="min-w-0">
+                  <span className="text-xs font-semibold text-orange-700 dark:text-orange-400">
+                    On Leave
+                  </span>
+                  <span className="text-[10px] text-orange-600/80 dark:text-orange-400/70 ml-1">
+                    ({user.current_leave.type})
+                  </span>
+                  <p className="text-[10px] text-orange-600/70 dark:text-orange-400/60 truncate">
+                    {new Date(user.current_leave.start_date).toLocaleDateString()} — {new Date(user.current_leave.end_date).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+            ) : statusInfo && (
               <div className="mt-1.5 flex items-center gap-1.5">
                 <span
                   className="h-2 w-2 rounded-full"

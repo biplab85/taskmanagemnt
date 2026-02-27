@@ -58,7 +58,7 @@ function SortableColumnRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: column.id });
+  } = useSortable({ id: column.slug });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -120,9 +120,7 @@ export function KanbanColumnsSettings() {
   const [deleting, setDeleting] = useState(false);
 
   // Sync local state when context columns change
-  useState(() => {
-    setLocalColumns(columns);
-  });
+  // (intentionally empty – sync is handled below)
 
   // Keep local state in sync with columns from context
   if (columns !== localColumns && !saving) {
@@ -140,8 +138,8 @@ export function KanbanColumnsSettings() {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
-    const oldIndex = localColumns.findIndex((c) => c.id === active.id);
-    const newIndex = localColumns.findIndex((c) => c.id === over.id);
+    const oldIndex = localColumns.findIndex((c) => c.slug === active.id);
+    const newIndex = localColumns.findIndex((c) => c.slug === over.id);
     const reordered = arrayMove(localColumns, oldIndex, newIndex);
     setLocalColumns(reordered);
 
@@ -269,13 +267,13 @@ export function KanbanColumnsSettings() {
             onDragEnd={handleDragEnd}
           >
             <SortableContext
-              items={localColumns.map((c) => c.id)}
+              items={localColumns.map((c) => c.slug)}
               strategy={verticalListSortingStrategy}
             >
               <div className="space-y-1.5">
                 {localColumns.map((col) => (
                   <SortableColumnRow
-                    key={col.id}
+                    key={col.slug}
                     column={col}
                     onLabelChange={handleLabelChange}
                     onColorChange={handleColorChange}
